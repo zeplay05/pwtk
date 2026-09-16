@@ -801,13 +801,15 @@ export default function App() {
   const handleSubscribe = async (gradeVal) => {
     if (!gradeVal) return;
 
-    if (osAppId && window.OneSignal) {
+    if (window.OneSignal) {
       try {
-        await window.OneSignal.Slidedown.promptPush();
+        // ขอสิทธิ์แจ้งเตือนแบบชัดเจน
+        await window.OneSignal.Notifications.requestPermission();
         await window.OneSignal.User.addTag("level", gradeVal);
-        setIsPushEnabled(true);
+        const perm = await window.OneSignal.Notifications.permission;
+        setIsPushEnabled(Boolean(perm));
       } catch (err) {
-        console.warn(err);
+        console.warn("OneSignal subscribe error:", err);
       }
     } else if ("Notification" in window && Notification.permission !== "granted") {
       try {
