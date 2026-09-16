@@ -340,21 +340,37 @@ body {
 .category-filter-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-start;
+  gap: 0;
   margin-bottom: 1.5rem;
   width: 100%;
+  position: relative;
+}
+
+/* Fade-out hint on the right edge to indicate more tabs */
+.category-filter-row::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--bg-page));
+  pointer-events: none;
+  z-index: 1;
 }
 
 .pills-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
   width: 100%;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  scroll-behavior: smooth;
+  padding-right: 40px;
 }
 
 .pills-group::-webkit-scrollbar {
@@ -364,7 +380,7 @@ body {
 .cat-pill {
   background: var(--surface-pill);
   border: none;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: var(--radius-pill);
   font-family: inherit;
   font-size: 0.84rem;
@@ -374,6 +390,7 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
   transition: all 0.2s;
+  position: relative;
 }
 
 .cat-pill:hover {
@@ -385,6 +402,24 @@ body {
   background: #09090b;
   color: white;
   font-weight: 600;
+}
+
+/* Short labels hidden on desktop, shown on small screens */
+.cat-label-short {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .cat-label-full {
+    display: none;
+  }
+  .cat-label-short {
+    display: inline;
+  }
+  .cat-pill {
+    padding: 7px 14px;
+    font-size: 0.8rem;
+  }
 }
 
 /* =========================================================
