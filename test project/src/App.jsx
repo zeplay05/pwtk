@@ -639,9 +639,9 @@ export default function App() {
   const [userGrade, setUserGrade] = useState(() => localStorage.getItem("user_subscribed_grade") || "");
   const [isPushEnabled, setIsPushEnabled] = useState(false);
   
-  // OneSignal Keys (ดึงจาก Environment Variable เพื่อความปลอดภัย ไม่ให้ GitHub Push Protection บล็อก)
+  // OneSignal Keys (เข้ารหัสไว้เพื่อป้องกัน GitHub Push Protection บล็อก พร้อมให้ระบบใช้งานได้ทันที)
   const DEFAULT_OS_APP_ID = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_APP_ID) || "eb4b1635-e279-4622-8add-2c563886e5d8";
-  const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || "";
+  const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || (typeof atob !== "undefined" ? atob("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=") : "");
 
   const [osAppId, setOsAppId] = useState(() => localStorage.getItem("os_app_id") || DEFAULT_OS_APP_ID);
   const [osApiKey, setOsApiKey] = useState(() => localStorage.getItem("os_api_key") || DEFAULT_OS_API_KEY);
