@@ -1040,36 +1040,16 @@ export default function App() {
         const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
 
         // ยิงผ่าน /api/onesignal/notifications (Vercel & Vite Reverse Proxy ปลอดภัย 100% ไม่ติด CORS)
-        let res = await fetch("/api/onesignal/notifications", {
+        const res = await fetch("/api/onesignal/notifications", {
           method: "POST",
           headers: {
             "Content-Type": "application/json; charset=utf-8",
             Authorization: authHeader,
           },
           body: JSON.stringify(payload),
-        }).catch(() => null);
+        });
 
-        let data = null;
-        if (res && res.ok) {
-          data = await res.json().catch(() => null);
-        } else {
-          // สำรองยิงผ่าน /api/push
-          const serverlessRes = await fetch("/api/push", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title,
-              message,
-              grade,
-              osAppId,
-              osApiKey,
-              url: typeof window !== "undefined" ? window.location.origin : "",
-            }),
-          }).catch(() => null);
-          if (serverlessRes && serverlessRes.ok) {
-            data = await serverlessRes.json().catch(() => null);
-          }
-        }
+        const data = await res.json().catch(() => null);
 
         if (data && !data.errors) {
           const count = data.recipients !== undefined ? data.recipients : "";
