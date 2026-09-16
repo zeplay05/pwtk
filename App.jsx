@@ -639,6 +639,86 @@ export default function App() {
   const [userGrade, setUserGrade] = useState(() => localStorage.getItem("user_subscribed_grade") || "");
   const [isPushEnabled, setIsPushEnabled] = useState(false);
   
+  // Supabase Cloud Database Configuration (ซิงค์ข่าวสารทุกเครื่องแบบ Realtime)
+  const SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || "https://uabmrftmulbminoeivqj.supabase.co";
+  const SUPABASE_ANON_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhYm1yZnRtdWxibWlub2VpdnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTU0MTUsImV4cCI6MjEwNTEzMTQxNX0.42rQXi_g1wxLmhdPPOdgqDCgDQn3KWgdxexSqusdzjU";
+
+  const supabaseRequest = async (endpoint, options = {}) => {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+    try {
+      const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+      const headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      };
+      const res = await fetch(url, { ...options, headers });
+      if (!res.ok) {
+        console.warn("Supabase API warning:", res.status);
+        return null;
+      }
+      return await res.json().catch(() => null);
+    } catch (e) {
+      console.warn("Supabase fetch error:", e);
+      return null;
+    }
+  };
+
+  // โหลดข้อมูลจาก Supabase Cloud Database (ให้ทุกเครื่องเห็นข่าวตรงกัน)
+  const loadCloudNews = async () => {
+    try {
+      const data = await supabaseRequest("school_news?select=*&order=created_at.desc");
+      if (data && Array.isArray(data) && data.length > 0) {
+        const mapped = data.map((item) => ({
+          id: String(item.id),
+          title: item.title,
+          category: item.category,
+          summary: item.summary,
+          grade: item.grade || "all",
+          tags: Array.isArray(item.tags) ? item.tags : (typeof item.tags === "string" ? JSON.parse(item.tags || "[]") : []),
+          image: item.image,
+          timeAgo: item.time_ago || "ไม่นานมานี้",
+          isHero: Boolean(item.is_hero),
+        }));
+        setNewsList(mapped);
+        localStorage.setItem("editorial_school_news_v3", JSON.stringify(mapped));
+      } else if (data && Array.isArray(data) && data.length === 0) {
+        // ถ้าฐานข้อมูล Supabase ยังว่าง ให้ Seed ข้อมูลเริ่มต้นขึ้น Cloud
+        const rows = INITIAL_NEWS.map((n) => ({
+          id: String(n.id),
+          title: n.title,
+          category: n.category,
+          summary: n.summary,
+          grade: n.grade || "all",
+          tags: n.tags || [],
+          image: n.image || "",
+          time_ago: n.timeAgo || "",
+          is_hero: Boolean(n.isHero),
+        }));
+        await supabaseRequest("school_news", {
+          method: "POST",
+          headers: { "Prefer": "resolution=ignore-duplicates" },
+          body: JSON.stringify(rows),
+        });
+      }
+    } catch (err) {
+      console.warn("Could not sync with Supabase:", err);
+    }
+  };
+
+  // Sync กับ Supabase ตอนเริ่ม และทุกๆ 15 วินาที
+  useEffect(() => {
+    loadCloudNews();
+    const interval = setInterval(loadCloudNews, 15000);
+    const onFocus = () => loadCloudNews();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
   // OneSignal Keys (เข้ารหัสไว้เพื่อป้องกัน GitHub Push Protection บล็อก พร้อมให้ระบบใช้งานได้ทันที)
   const DEFAULT_OS_APP_ID = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_APP_ID) || "eb4b1635-e279-4622-8add-2c563886e5d8";
   const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || (typeof atob !== "undefined" ? atob("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=") : "");
@@ -832,16 +912,20 @@ export default function App() {
     if (editingItem) {
       // อัปเดตข่าวที่มีอยู่เดิม และบันทึก
       const targetId = String(editingItem.id);
+      const updatedItemData = {
+        title: formTitle.trim(),
+        category: formCategory.trim(),
+        summary: formSummary.trim(),
+        grade: formGrade,
+        image: formImage.trim() || editingItem.image || defaultImg,
+        tags: [`#${getGradeShort(formGrade)}`, `#${formCategory.trim()}`],
+      };
+
       const updatedList = newsList.map((item) => {
         if (String(item.id) === targetId) {
           return {
             ...item,
-            title: formTitle.trim(),
-            category: formCategory.trim(),
-            summary: formSummary.trim(),
-            grade: formGrade,
-            image: formImage.trim() || item.image || defaultImg,
-            tags: [`#${getGradeShort(formGrade)}`, `#${formCategory.trim()}`],
+            ...updatedItemData,
           };
         }
         return item;
@@ -853,12 +937,19 @@ export default function App() {
       } catch (err) {
         console.error("LocalStorage error:", err);
       }
+
+      // ซิงค์การแก้ไขขึ้น Supabase Cloud
+      supabaseRequest(`school_news?id=eq.${targetId}`, {
+        method: "PATCH",
+        body: JSON.stringify(updatedItemData),
+      });
       
       addToast("💾 บันทึกการแก้ไขสำเร็จ!", `เปลี่ยนระดับชั้นเป็น "${getGradeLabel(formGrade)}" เรียบร้อย`);
     } else {
       // เพิ่มข่าวใหม่
+      const newItemId = String(Date.now());
       const newItem = {
-        id: String(Date.now()),
+        id: newItemId,
         title: formTitle.trim(),
         category: formCategory.trim(),
         timeAgo: "ตอนนี้",
@@ -875,7 +966,24 @@ export default function App() {
       } catch (err) {
         console.error("LocalStorage error:", err);
       }
-      addToast("✅ ลงข่าวใหม่สำเร็จ!", "บันทึกข้อมูลลงระบบเรียบร้อย");
+
+      // บันทึกขึ้น Supabase Cloud Database ทันที
+      supabaseRequest("school_news", {
+        method: "POST",
+        body: JSON.stringify({
+          id: newItem.id,
+          title: newItem.title,
+          category: newItem.category,
+          summary: newItem.summary,
+          grade: newItem.grade,
+          tags: newItem.tags,
+          image: newItem.image,
+          time_ago: newItem.timeAgo,
+          is_hero: false,
+        }),
+      });
+
+      addToast("✅ ลงข่าวใหม่สำเร็จ!", "บันทึกข้อมูลขึ้น Cloud และอุปกรณ์ทุกเครื่องเรียบร้อย");
     }
 
     if (formSendPush) {
@@ -902,6 +1010,12 @@ export default function App() {
       } catch (e) {
         console.error(e);
       }
+
+      // ลบออกจาก Supabase Cloud
+      supabaseRequest(`school_news?id=eq.${id}`, {
+        method: "DELETE",
+      });
+
       addToast("🗑️ ลบข่าวเรียบร้อย", `ลบข้อมูล "${title}" ออกจากระบบแล้ว`);
     }
   };
