@@ -1,0 +1,11 @@
+{
+  "name": "school-news-project",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix \"test project\" run dev",
+    "build": "npm --prefix \"test project\" run build",
+    "preview": "npm --prefix \"test project\" run preview"
+  }
+}

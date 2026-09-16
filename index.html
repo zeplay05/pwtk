@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โรงเรียนปายวิทยาคาร - เว็บข่าวสาร & แจ้งเตือน OneSignal</title>
+  <meta name="description" content="ระบบเว็บข่าวสารโรงเรียนและแจ้งเตือน Web Push Notification แยกตามระดับชั้นด้วย OneSignal">
+  
+  <link rel="stylesheet" href="style.css">
+
+  <!-- React 18 & Babel for instant browser execution -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- OneSignal Web Push SDK v16 -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+</head>
+<body>
+  <!-- Root mounting container for React -->
+  <div id="root"></div>
+
+  <!-- Load and run React App -->
+  <script type="text/babel" src="App.jsx"></script>
+</body>
+</html>
