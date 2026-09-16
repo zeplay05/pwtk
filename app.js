@@ -282,11 +282,11 @@ async function handleSendBroadcast(event) {
         payload.included_segments = ["Subscribed Users"];
       }
 
-      const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      const response = await fetch("/api/onesignal/notifications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Authorization": `Basic ${appState.oneSignalApiKey}`
+          "Authorization": appState.oneSignalApiKey && appState.oneSignalApiKey.startsWith("os_v2_") ? `Key ${appState.oneSignalApiKey}` : `Basic ${appState.oneSignalApiKey}`
         },
         body: JSON.stringify(payload)
       });
