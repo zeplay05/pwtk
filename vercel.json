@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "test project/dist",
   "rewrites": [
     {
       "source": "/api/onesignal/:path*",
