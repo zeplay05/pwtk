@@ -1020,40 +1020,67 @@ export default function App() {
     }
   };
 
-  // OneSignal REST Push
+  // OneSignal REST Push (ส่งผ่าน Serverless API เพื่อป้องกัน Browser CORS Failed to fetch)
   const sendPush = async (title, message, grade) => {
     if (osAppId && osApiKey) {
       try {
         const payload = {
-          app_id: osAppId,
-          headings: { en: title, th: title },
-          contents: { en: message, th: message },
+          title: title,
+          message: message,
+          grade: grade,
+          osAppId: osAppId,
+          osApiKey: osApiKey,
           url: typeof window !== "undefined" ? window.location.origin : "",
         };
-        if (grade !== "all") {
-          payload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
-        } else {
-          payload.included_segments = ["Subscribed Users"];
+
+        let data = null;
+        try {
+          const res = await fetch("/api/push", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            data = await res.json().catch(() => null);
+          }
+        } catch {
+          // Local fallback
         }
 
-        const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
+        if (!data) {
+          const directPayload = {
+            app_id: osAppId,
+            headings: { en: title, th: title },
+            contents: { en: message, th: message },
+            url: typeof window !== "undefined" ? window.location.origin : "",
+          };
+          if (grade !== "all") {
+            directPayload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
+          } else {
+            directPayload.included_segments = ["Subscribed Users"];
+          }
+          const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
 
-        const res = await fetch("https://onesignal.com/api/v1/notifications", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            Authorization: authHeader,
-          },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (res.ok && !data.errors) {
+          const directRes = await fetch("https://onesignal.com/api/v1/notifications", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+              Authorization: authHeader,
+            },
+            body: JSON.stringify(directPayload),
+          });
+          data = await directRes.json().catch(() => null);
+        }
+
+        if (data && !data.errors) {
           const count = data.recipients !== undefined ? data.recipients : "";
-          addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count ? `(${count} เครื่อง)` : ""}`);
-        } else {
+          addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
+        } else if (data && data.errors) {
           console.error("OneSignal Error:", data);
-          const errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors || data);
-          addToast("⚠️ OneSignal Push เตือน", errDetail);
+          const errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
+          addToast("⚠️ OneSignal แจ้งเตือน", errDetail);
+        } else {
+          addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
         }
       } catch (e) {
         console.error(e);
