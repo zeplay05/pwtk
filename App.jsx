@@ -1033,7 +1033,7 @@ export default function App() {
         if (grade !== "all") {
           payload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
         } else {
-          payload.included_segments = ["Subscribed Users", "Total Subscriptions"];
+          payload.included_segments = ["Subscribed Users"];
         }
 
         const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
