@@ -1020,56 +1020,55 @@ export default function App() {
     }
   };
 
-  // OneSignal REST Push (ส่งผ่าน Serverless API เพื่อป้องกัน Browser CORS Failed to fetch)
+  // OneSignal REST Push (ส่งผ่าน Proxy /api/onesignal/notifications เพื่อป้องกัน Browser CORS)
   const sendPush = async (title, message, grade) => {
     if (osAppId && osApiKey) {
       try {
         const payload = {
-          title: title,
-          message: message,
-          grade: grade,
-          osAppId: osAppId,
-          osApiKey: osApiKey,
+          app_id: osAppId,
+          headings: { en: title, th: title },
+          contents: { en: message, th: message },
           url: typeof window !== "undefined" ? window.location.origin : "",
         };
 
-        let data = null;
-        try {
-          const res = await fetch("/api/push", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          if (res.ok) {
-            data = await res.json().catch(() => null);
-          }
-        } catch {
-          // Local fallback
+        if (grade && grade !== "all") {
+          payload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
+        } else {
+          payload.included_segments = ["Subscribed Users"];
         }
 
-        if (!data) {
-          const directPayload = {
-            app_id: osAppId,
-            headings: { en: title, th: title },
-            contents: { en: message, th: message },
-            url: typeof window !== "undefined" ? window.location.origin : "",
-          };
-          if (grade !== "all") {
-            directPayload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
-          } else {
-            directPayload.included_segments = ["Subscribed Users"];
-          }
-          const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
+        const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
 
-          const directRes = await fetch("https://onesignal.com/api/v1/notifications", {
+        // ยิงผ่าน /api/onesignal/notifications (Vercel & Vite Reverse Proxy ปลอดภัย 100% ไม่ติด CORS)
+        let res = await fetch("/api/onesignal/notifications", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            Authorization: authHeader,
+          },
+          body: JSON.stringify(payload),
+        }).catch(() => null);
+
+        let data = null;
+        if (res && res.ok) {
+          data = await res.json().catch(() => null);
+        } else {
+          // สำรองยิงผ่าน /api/push
+          const serverlessRes = await fetch("/api/push", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json; charset=utf-8",
-              Authorization: authHeader,
-            },
-            body: JSON.stringify(directPayload),
-          });
-          data = await directRes.json().catch(() => null);
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              message,
+              grade,
+              osAppId,
+              osApiKey,
+              url: typeof window !== "undefined" ? window.location.origin : "",
+            }),
+          }).catch(() => null);
+          if (serverlessRes && serverlessRes.ok) {
+            data = await serverlessRes.json().catch(() => null);
+          }
         }
 
         if (data && !data.errors) {
