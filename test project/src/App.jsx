@@ -1026,7 +1026,7 @@ export default function App() {
     }
   };
 
-  // OneSignal REST Push (ส่งผ่าน Proxy /api/onesignal/notifications เพื่อป้องกัน Browser CORS)
+  // OneSignal REST Push (ส่งผ่าน Serverless API /api/push เพื่อให้ Authorization Header ส่งได้สมบูรณ์และไม่ติด CORS)
   const sendPush = async (title, message, grade) => {
     const effectiveApiKey = (osApiKey && osApiKey.trim().startsWith("os_v2_")) ? osApiKey.trim() : DEFAULT_OS_API_KEY;
     const effectiveAppId = (osAppId && osAppId.trim()) ? osAppId.trim() : DEFAULT_OS_APP_ID;
@@ -1034,26 +1034,18 @@ export default function App() {
     if (effectiveAppId && effectiveApiKey) {
       try {
         const payload = {
-          app_id: effectiveAppId,
-          headings: { en: title, th: title },
-          contents: { en: message, th: message },
+          title,
+          message,
+          grade,
+          osAppId: effectiveAppId,
+          osApiKey: effectiveApiKey,
           url: typeof window !== "undefined" ? window.location.origin : "",
         };
 
-        if (grade && grade !== "all") {
-          payload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
-        } else {
-          payload.included_segments = ["Subscribed Users"];
-        }
-
-        const authHeader = `Key ${effectiveApiKey}`;
-
-        // ยิงผ่าน /api/onesignal/notifications (Vercel & Vite Reverse Proxy ปลอดภัย 100% ไม่ติด CORS)
-        const res = await fetch("/api/onesignal/notifications", {
+        const res = await fetch("/api/push", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            Authorization: authHeader,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
         });
