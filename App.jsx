@@ -914,24 +914,36 @@ export default function App() {
           app_id: osAppId,
           headings: { en: title, th: title },
           contents: { en: message, th: message },
+          url: typeof window !== "undefined" ? window.location.origin : "",
         };
         if (grade !== "all") {
           payload.filters = [{ field: "tag", key: "level", relation: "=", value: grade }];
         } else {
-          payload.included_segments = ["Subscribed Users"];
+          payload.included_segments = ["Subscribed Users", "Total Subscriptions"];
         }
 
-        await fetch("https://onesignal.com/api/v1/notifications", {
+        const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
+
+        const res = await fetch("https://onesignal.com/api/v1/notifications", {
           method: "POST",
           headers: {
             "Content-Type": "application/json; charset=utf-8",
-            Authorization: `Basic ${osApiKey}`,
+            Authorization: authHeader,
           },
           body: JSON.stringify(payload),
         });
-        addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
+        const data = await res.json();
+        if (res.ok && !data.errors) {
+          const count = data.recipients !== undefined ? data.recipients : "";
+          addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count ? `(${count} เครื่อง)` : ""}`);
+        } else {
+          console.error("OneSignal Error:", data);
+          const errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors || data);
+          addToast("⚠️ OneSignal Push เตือน", errDetail);
+        }
       } catch (e) {
         console.error(e);
+        addToast("❌ ไม่สามารถส่ง Push ได้", e.message);
       }
     } else {
       addToast(`📢 [จำลองแจ้งเตือน OneSignal]`, `${title} (กลุ่ม: ${getGradeShort(grade)})`);
