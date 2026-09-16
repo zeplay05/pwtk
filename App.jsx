@@ -723,8 +723,14 @@ export default function App() {
   const DEFAULT_OS_APP_ID = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_APP_ID) || "eb4b1635-e279-4622-8add-2c563886e5d8";
   const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || (typeof atob !== "undefined" ? atob("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=") : "");
 
-  const [osAppId, setOsAppId] = useState(() => localStorage.getItem("os_app_id") || DEFAULT_OS_APP_ID);
-  const [osApiKey, setOsApiKey] = useState(() => localStorage.getItem("os_api_key") || DEFAULT_OS_API_KEY);
+  const [osAppId, setOsAppId] = useState(() => {
+    const saved = localStorage.getItem("os_app_id");
+    return (saved && saved.trim()) ? saved.trim() : DEFAULT_OS_APP_ID;
+  });
+  const [osApiKey, setOsApiKey] = useState(() => {
+    const saved = localStorage.getItem("os_api_key");
+    return (saved && saved.trim().startsWith("os_v2_")) ? saved.trim() : DEFAULT_OS_API_KEY;
+  });
 
   // Admin Modals & States
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -1022,10 +1028,13 @@ export default function App() {
 
   // OneSignal REST Push (ส่งผ่าน Proxy /api/onesignal/notifications เพื่อป้องกัน Browser CORS)
   const sendPush = async (title, message, grade) => {
-    if (osAppId && osApiKey) {
+    const effectiveApiKey = (osApiKey && osApiKey.trim().startsWith("os_v2_")) ? osApiKey.trim() : DEFAULT_OS_API_KEY;
+    const effectiveAppId = (osAppId && osAppId.trim()) ? osAppId.trim() : DEFAULT_OS_APP_ID;
+
+    if (effectiveAppId && effectiveApiKey) {
       try {
         const payload = {
-          app_id: osAppId,
+          app_id: effectiveAppId,
           headings: { en: title, th: title },
           contents: { en: message, th: message },
           url: typeof window !== "undefined" ? window.location.origin : "",
@@ -1037,7 +1046,7 @@ export default function App() {
           payload.included_segments = ["Subscribed Users"];
         }
 
-        const authHeader = osApiKey.startsWith("os_v2_") ? `Key ${osApiKey}` : `Basic ${osApiKey}`;
+        const authHeader = `Key ${effectiveApiKey}`;
 
         // ยิงผ่าน /api/onesignal/notifications (Vercel & Vite Reverse Proxy ปลอดภัย 100% ไม่ติด CORS)
         const res = await fetch("/api/onesignal/notifications", {
