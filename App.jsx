@@ -789,6 +789,25 @@ export default function App() {
             appId: osAppId,
             notifyButton: { enable: true },
             allowLocalhostAsSecureOrigin: true,
+            promptOptions: {
+              slidedown: {
+                prompts: [
+                  {
+                    type: "push",
+                    autoPrompt: true,
+                    text: {
+                      actionMessage: "โรงเรียนปายวิทยาคารต้องการส่งการแจ้งเตือนข่าวสารด่วนถึงคุณ",
+                      acceptButton: "อนุญาต (Allow)",
+                      cancelButton: "บล็อก"
+                    },
+                    delay: {
+                      pageViews: 1,
+                      timeDelay: 1
+                    }
+                  }
+                ]
+              }
+            }
           });
           const perm = await OneSignal.Notifications.permission;
           setIsPushEnabled(Boolean(perm));
@@ -1859,68 +1878,123 @@ export default function App() {
         </div>
       )}
 
-      {/* 5. Auto Notification Permission Modal (เด้งขึ้นมาให้คนทั่วไปกดอนุญาตรับแจ้งเตือนได้ในคลิกเดียว) */}
+      {/* 5. Native Chrome / Windows Style Notification Permission Dialog Bar */}
       {showSubscribeModal && (
-        <div className="modal-overlay" style={{ zIndex: 9999, background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(6px)" }}>
-          <div className="modal-card" style={{ maxWidth: "440px", padding: "24px 20px", textAlign: "center", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)" }}>
-            <div style={{ width: "64px", height: "64px", background: "linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "2rem", boxShadow: "0 10px 25px rgba(79, 70, 229, 0.4)", animation: "bounce 2s infinite" }}>
+        <div
+          style={{
+            position: "fixed",
+            top: "14px",
+            left: "16px",
+            zIndex: 9999,
+            width: "calc(100% - 32px)",
+            maxWidth: "420px",
+            background: "#ffffff",
+            borderRadius: "14px",
+            border: "1px solid #cbd5e1",
+            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(0,0,0,0.08)",
+            padding: "16px 18px",
+            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            animation: "slideDownPrompt 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
+          {/* Header styled like Chrome address bar permission popup */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "12px" }}>
+            <div style={{ width: "38px", height: "38px", background: "#eff6ff", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", color: "#2563eb", flexShrink: 0 }}>
               🔔
             </div>
-
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "800", color: "#0f172a", marginBottom: "8px" }}>
-              เปิดรับการแจ้งเตือนข่าวสารโรงเรียน
-            </h3>
-
-            <p style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: "1.5", marginBottom: "18px" }}>
-              ไม่พลาดข่าวสารด่วน ตารางเรียน ตารางสอบ และประกาศสำคัญจากโรงเรียนปายวิทยาคาร ส่งตรงถึงมือถือของคุณทันที!
-            </p>
-
-            {isInAppBrowser && (
-              <div style={{ background: "#fef3c7", border: "1px solid #fde047", borderRadius: "10px", padding: "10px", marginBottom: "14px", fontSize: "0.78rem", color: "#854d0e", textAlign: "left" }}>
-                ⚠️ <strong>คำแนะนำ:</strong> คุณกำลังเปิดผ่านแอปแชท เพื่อให้รับการแจ้งเตือนได้ กรุณากดปุ่ม <strong>จุด 3 จุดมุมบน</strong> แล้วเลือก <strong>"เปิดใน Chrome"</strong>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.78rem", color: "#64748b", fontWeight: "600", marginBottom: "2px" }}>
+                <span>🔒</span>
+                <span>pwtk.vercel.app</span>
+                <span>ต้องการ</span>
               </div>
-            )}
-
-            <div style={{ marginBottom: "16px", textAlign: "left" }}>
-              <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#334155", display: "block", marginBottom: "6px" }}>
-                🎓 เลือกระดับชั้นของคุณ:
-              </label>
-              <select
-                className="input-pill"
-                style={{ width: "100%", padding: "10px 14px", fontSize: "0.9rem", fontWeight: "600", borderColor: "#4f46e5", background: "#f8fafc" }}
-                value={modalGradeChoice}
-                onChange={(e) => setModalGradeChoice(e.target.value)}
-              >
-                {GRADE_OPTIONS.map((g) => (
-                  <option key={g.value} value={g.value}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
+              <div style={{ fontSize: "0.95rem", fontWeight: "700", color: "#0f172a", lineHeight: "1.3" }}>
+                แสดงการแจ้งเตือน (Show notifications)
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "2px" }}>
+                เพื่อรับข่าวสารด่วน ตารางเรียน และกิจกรรมโรงเรียน
+              </div>
             </div>
-
             <button
               type="button"
-              className="btn btn-primary"
-              style={{ width: "100%", padding: "12px", fontSize: "0.95rem", fontWeight: "700", background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)", color: "#fff", borderRadius: "12px", border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)", marginBottom: "10px" }}
+              style={{ border: "none", background: "none", color: "#94a3b8", fontSize: "1.1rem", cursor: "pointer", padding: "0 4px", lineHeight: "1" }}
+              onClick={() => {
+                sessionStorage.setItem("dismissed_subscribe_modal", "true");
+                setShowSubscribeModal(false);
+              }}
+              title="ปิด"
+            >
+              ✕
+            </button>
+          </div>
+
+          {isInAppBrowser && (
+            <div style={{ background: "#fef3c7", border: "1px solid #fde047", borderRadius: "8px", padding: "8px 10px", marginBottom: "12px", fontSize: "0.76rem", color: "#854d0e" }}>
+              ⚠️ คุณเปิดผ่านแอปแชท กรุณากด <strong>จุด 3 จุดมุมบน</strong> แล้วเลือก <strong>"เปิดใน Chrome"</strong>
+            </div>
+          )}
+
+          {/* Grade selection */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "14px" }}>
+            <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#475569", whiteSpace: "nowrap" }}>
+              🎓 ระดับชั้น:
+            </span>
+            <select
+              style={{ flex: 1, border: "none", background: "transparent", fontSize: "0.82rem", fontWeight: "600", color: "#0f172a", outline: "none", cursor: "pointer" }}
+              value={modalGradeChoice}
+              onChange={(e) => setModalGradeChoice(e.target.value)}
+            >
+              {GRADE_OPTIONS.map((g) => (
+                <option key={g.value} value={g.value}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Native-style Allow / Block Action Buttons */}
+          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              style={{
+                padding: "8px 18px",
+                fontSize: "0.84rem",
+                fontWeight: "600",
+                background: "#f1f5f9",
+                color: "#475569",
+                border: "1px solid #cbd5e1",
+                borderRadius: "8px",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onClick={() => {
+                sessionStorage.setItem("dismissed_subscribe_modal", "true");
+                setShowSubscribeModal(false);
+              }}
+            >
+              บล็อก
+            </button>
+            <button
+              type="button"
+              style={{
+                padding: "8px 22px",
+                fontSize: "0.84rem",
+                fontWeight: "700",
+                background: "#1a73e8",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(26, 115, 232, 0.35)",
+                transition: "all 0.15s",
+              }}
               onClick={async () => {
                 await handleSubscribe(modalGradeChoice);
                 sessionStorage.setItem("dismissed_subscribe_modal", "true");
                 setShowSubscribeModal(false);
               }}
             >
-              🔔 อนุญาตเปิดรับการแจ้งเตือน
-            </button>
-
-            <button
-              type="button"
-              style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "0.82rem", cursor: "pointer", textDecoration: "underline", padding: "6px" }}
-              onClick={() => {
-                sessionStorage.setItem("dismissed_subscribe_modal", "true");
-                setShowSubscribeModal(false);
-              }}
-            >
-              ไว้คราวหลัง
+              อนุญาต (Allow)
             </button>
           </div>
         </div>
