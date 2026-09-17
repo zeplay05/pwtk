@@ -944,6 +944,15 @@ export default function App() {
   const handleExecuteAllow = async () => {
     setShowBrowserPermissionModal(false);
 
+    // ตรวจสอบเบื้องต้น หากผู้ใช้เคย Block ในเบราว์เซอร์ไว้
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied") {
+      addToast(
+        "⚠️ เบราว์เซอร์กำลังบล็อกการแจ้งเตือน",
+        "กรุณาคลิกไอคอนแม่กุญแจ 🔒 ข้างชื่อเว็บด้านบนสุด แล้วเปลี่ยน Notifications เป็น 'อนุญาต (Allow)'"
+      );
+      return;
+    }
+
     try {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
@@ -971,9 +980,21 @@ export default function App() {
             await OneSignal.User.addTag("level", grade);
           } else {
             console.log("🔔 [OneSignal] User dismissed or blocked notification permission");
+            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied") {
+              addToast(
+                "⚠️ การแจ้งเตือนถูกบล็อกอยู่",
+                "คลิกรูปแม่กุญแจ 🔒 ข้าง URL ด้านบน แล้วปรับเป็น Allow เพื่อรับการแจ้งเตือน"
+              );
+            }
           }
         } catch (err) {
           console.warn("handleExecuteAllow error:", err);
+          if (String(err).toLowerCase().includes("block") || (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied")) {
+            addToast(
+              "⚠️ เบราว์เซอร์บล็อกสิทธิ์แจ้งเตือน",
+              "คลิกไอคอนแม่กุญแจ 🔒 ด้านบนสุดข้างชื่อเว็บ แล้วเลือก 'อนุญาต (Allow)' จากนั้นรีเฟรชหน้าเว็บ"
+            );
+          }
         }
       });
     } catch (e) {
