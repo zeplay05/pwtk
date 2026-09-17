@@ -849,6 +849,46 @@ export default function App() {
     }
   }, []);
 
+  // ตรวจสอบแพลตฟอร์มของอุปกรณ์ (iOS / LINE / Android)
+  const isIOS = typeof navigator !== "undefined" && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  const isLineOrFB = typeof navigator !== "undefined" && /Line|FBAN|FBAV|Instagram/i.test(navigator.userAgent);
+  const isNotificationDenied = typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied";
+
+  // ฟังก์ชันคลิกเพื่อเปิด Allow บน Browser ทันที (รองรับทั้งคอมและมือถือทุกค่าย)
+  const handleEnablePushClick = async () => {
+    if (isLineOrFB) {
+      alert("⚠️ คุณกำลังเปิดเว็บผ่านแอป LINE / Facebook ซึ่งระบบจะไม่สามารถรับแจ้งเตือนได้\n\nวิธีแก้: กรุณากดปุ่ม 3 จุด (หรือแชร์) มุมขวาบน แล้วเลือก 'เปิดในเบราว์เซอร์อื่น' หรือ 'Open in default browser' (Chrome/Safari) ครับ");
+      return;
+    }
+    if (isIOS) {
+      alert("📱 สำหรับผู้ใช้ iPhone (iOS):\n\nApple กำหนดให้ต้องเพิ่มเว็บลงหน้าจอก่อนจึงจะรับการแจ้งเตือนได้ครับ\n\nวิธีเปิด:\n1. แตะปุ่มแชร์ ⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น) ที่แถบเมนู Safari ด้านล่าง\n2. เลื่อนลงมาเลือก 'เพิ่มไปยังหน้าจอโฮม' (Add to Home Screen)\n3. เปิดแอปจากไอคอนบนหน้าจอโฮมเพื่อรับการแจ้งเตือนได้ทันที!");
+      return;
+    }
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "denied") {
+        alert("🔒 เบราว์เซอร์ของคุณเคยถูกกดบล็อกการแจ้งเตือนไว้ครับ\n\nวิธีปลดบล็อก:\n1. กดที่ไอคอนรูปแม่กุญแจ หรือ ตัวปรับตั้งค่า หน้าชื่อเว็บด้านบนสุด (ข้างซ้ายของ pwtk.vercel.app)\n2. ไปที่ 'สิทธิ์' (Permissions) > 'การแจ้งเตือน' (Notifications)\n3. เปลี่ยนเป็น 'อนุญาต' (Allow) แล้วกดรีเฟรชหน้าเว็บครับ");
+        return;
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        setIsPushEnabled(perm === "granted");
+        if (perm === "granted") {
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred.push(async function (OneSignal) {
+            await OneSignal.Notifications.requestPermission();
+            const grade = localStorage.getItem("user_subscribed_grade") || "all";
+            await OneSignal.User.addTag("level", grade);
+          });
+          addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    } else {
+      alert("เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน กรุณาเปิดผ่าน Google Chrome ครับ");
+    }
+  };
+
   // OneSignal Web SDK
   useEffect(() => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -1228,7 +1268,7 @@ export default function App() {
             </button>
           )}
           {/* ปุ่มขอสิทธิ์ Native ของ Browser หากยังไม่ได้อนุญาต */}
-          {typeof window !== "undefined" && "Notification" in window && Notification.permission !== "granted" && (
+          {typeof window !== "undefined" && !isPushEnabled && (
             <button
               type="button"
               className="btn btn-secondary"
@@ -1243,32 +1283,14 @@ export default function App() {
                 alignItems: "center",
                 gap: "6px",
               }}
-              onClick={async () => {
-                try {
-                  const perm = await Notification.requestPermission();
-                  setIsPushEnabled(perm === "granted");
-                  if (perm === "granted") {
-                    window.OneSignalDeferred = window.OneSignalDeferred || [];
-                    window.OneSignalDeferred.push(async function (OneSignal) {
-                      await OneSignal.Notifications.requestPermission();
-                      const grade = localStorage.getItem("user_subscribed_grade") || "all";
-                      await OneSignal.User.addTag("level", grade);
-                    });
-                    addToast("🎉 อนุญาตเรียบร้อย!", "เบราว์เซอร์เปิดรับการแจ้งเตือนแล้ว");
-                  } else if (perm === "denied") {
-                    alert("เบราว์เซอร์ของคุณถูกตั้งค่าบล็อกการแจ้งเตือนไว้ กรุณาคลิกไอคอนรูปแม่กุญแจหน้า URL เพื่อเปลี่ยนเป็น 'อนุญาต' (Allow)");
-                  }
-                } catch (err) {
-                  console.warn(err);
-                }
-              }}
+              onClick={handleEnablePushClick}
               title="คลิกเพื่อเปิดหน้าต่างอนุญาตการแจ้งเตือนของเบราว์เซอร์"
             >
               🔔 เปิด Allow แจ้งเตือน
             </button>
           )}
 
-          {typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted" && (
+          {typeof window !== "undefined" && isPushEnabled && (
             <div
               style={{
                 fontSize: "0.78rem",
@@ -1297,6 +1319,56 @@ export default function App() {
           <div className="breadcrumb">
             โรงเรียนปายวิทยาคาร <span>/</span> ข่าวประชาสัมพันธ์ & กิจกรรม
           </div>
+
+          {/* Notification Status Banner (แสดงชัดเจนสำหรับทุกอุปกรณ์) */}
+          {!isPushEnabled && (
+            <div style={{
+              background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+              border: "1px solid #bfdbfe",
+              borderRadius: "var(--radius-md)",
+              padding: "12px 16px",
+              marginBottom: "1.25rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              flexWrap: "wrap",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.08)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: "220px" }}>
+                <span style={{ fontSize: "1.4rem" }}>🔔</span>
+                <div>
+                  <div style={{ fontWeight: "700", fontSize: "0.88rem", color: "#1e3a8a" }}>
+                    เปิดรับการแจ้งเตือนข่าวสารโรงเรียนบนเบราว์เซอร์
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#2563eb", marginTop: "2px" }}>
+                    {isLineOrFB
+                      ? "คุณกำลังเปิดใน LINE/Facebook: แตะ 3 จุดมุมบน > 'เปิดในเบราว์เซอร์อื่น' เพื่อรับแจ้งเตือน"
+                      : isIOS
+                      ? "ผู้ใช้ iPhone: แตะแชร์ ⎋ ด้านล่าง > เลือก 'เพิ่มไปยังหน้าจอโฮม' เพื่อเปิดแจ้งเตือน"
+                      : isNotificationDenied
+                      ? "เบราว์เซอร์บล็อกแจ้งเตือนไว้: คลิกไอคอนแม่กุญแจหน้า URL ด้านบนเพื่ออนุญาต"
+                      : "กดปุ่มเพื่อเปิดหน้าต่างอนุญาต (Allow) ของเบราว์เซอร์"}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  padding: "8px 18px",
+                  fontSize: "0.84rem",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  borderRadius: "var(--radius-pill)",
+                }}
+                onClick={handleEnablePushClick}
+              >
+                🔔 {isIOS ? "ดูวิธีเปิดบน iPhone" : isNotificationDenied ? "ดูวิธีปลดบล็อก" : "กดเปิด Allow แจ้งเตือน"}
+              </button>
+            </div>
+          )}
 
           <div className="page-headline-row">
             <h1 className="main-title">โรงเรียนปายวิทยาคาร</h1>
