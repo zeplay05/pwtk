@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       payload.included_segments = ["Subscribed Users"];
     }
 
-    const response = await fetch("https://api.onesignal.com/notifications", {
+    let response = await fetch("https://api.onesignal.com/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -44,7 +44,25 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
+    let data = await response.json();
+
+    // หากส่งเจาะจงระดับชั้นแล้วยังไม่มีผู้รับ ให้ส่งหาผู้รับทุกคน (Subscribed Users) อัตโนมัติ
+    if (!response.ok && data && data.errors) {
+      const errStr = JSON.stringify(data.errors);
+      if (errStr.includes("All included players are not subscribed") && payload.filters) {
+        delete payload.filters;
+        payload.included_segments = ["Subscribed Users"];
+        response = await fetch("https://api.onesignal.com/notifications", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Key ${SERVER_OS_API_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        data = await response.json();
+      }
+    }
 
     if (!response.ok) {
       return res.status(response.status).json(data);

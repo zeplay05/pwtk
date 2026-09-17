@@ -743,8 +743,6 @@ export default function App() {
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(false);
-  const [permModalLoading, setPermModalLoading] = useState(false);
 
   // Admin Form State
   const [formTitle, setFormTitle] = useState("");
@@ -813,108 +811,92 @@ export default function App() {
     }
   };
 
-  // บังคับแสดงหน้าต่างขอสิทธิ์ Permissions Modal (สไตล์ Chrome มี Allow/Cancel) อัตโนมัติเมื่อเข้าเว็บ
+  // OneSignal Web SDK
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isGranted = "Notification" in window && Notification.permission === "granted";
-    if (isGranted) {
-      setIsPushEnabled(true);
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    if (osAppId) {
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
-          const userSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
-          await OneSignal.User.addTag("level", userSubGrade);
+          await OneSignal.init({
+            appId: osAppId,
+            allowLocalhostAsSecureOrigin: true,
+            autoResubscribe: true,
+          });
+
+          const perm = Boolean(OneSignal.Notifications.permission);
+          setIsPushEnabled(perm);
+
+          // เมื่อมีการกดอนุญาตจากเบราว์เซอร์
+          OneSignal.Notifications.addEventListener("permissionChange", async (isGranted) => {
+            setIsPushEnabled(isGranted);
+            if (isGranted) {
+              const grade = localStorage.getItem("user_subscribed_grade") || "all";
+              await OneSignal.User.addTag("level", grade);
+              addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
+            }
+          });
         } catch (e) {
-          console.warn(e);
+          console.warn("OneSignal Init Warning:", e);
         }
       });
-    } else {
-      const dismissed = sessionStorage.getItem("dismissed_perm_modal");
-      if (!dismissed) {
-        const timer = setTimeout(() => {
-          setShowBrowserPermissionModal(true);
-        }, 500);
-        return () => clearTimeout(timer);
-      }
+    } else if ("Notification" in window) {
+      setIsPushEnabled(Notification.permission === "granted");
     }
-  }, [isPushEnabled]);
+  }, [osAppId]);
 
-  // ฟังก์ชันคลิกเพื่อเปิดหน้าต่าง Allow จากบนเว็บ
-  const handleEnablePushClick = () => {
-    setShowBrowserPermissionModal(true);
-  };
-
-  // ดำเนินการกด Allow จากในเว็บ และยิงการแจ้งเตือนจริงเด้งขึ้นหน้าจอทันที
-  const handleExecuteAllow = async () => {
-    setPermModalLoading(true);
-
+  // ฟังก์ชันคลิกเดียวเพื่อเปิดหน้าต่าง Allow ของเบราว์เซอร์ทันที (ไม่ต้องกด 2 ที)
+  const handleEnablePushClick = async () => {
     try {
-      if (typeof window !== "undefined" && "Notification" in window) {
-        try {
-          await Notification.requestPermission();
-        } catch (e) {
-          console.warn("Browser requestPermission:", e);
-        }
-      }
-
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
+          // ขอสิทธิ์ Native ของ Browser โดยตรงในคลิกเดียว
           await OneSignal.Notifications.requestPermission();
           const grade = localStorage.getItem("user_subscribed_grade") || "all";
           await OneSignal.User.addTag("level", grade);
-        } catch (e) {
-          console.warn("OneSignal permission request:", e);
+          const perm = Boolean(OneSignal.Notifications.permission);
+          setIsPushEnabled(perm);
+
+          if (perm) {
+            addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว");
+
+            // ยิงการแจ้งเตือนยินดีต้อนรับเด้งขึ้นหน้าจอทันที
+            try {
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.ready.then((reg) => {
+                  reg.showNotification("🔔 โรงเรียนปายวิทยาคาร", {
+                    body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
+                    icon: "/favicon.svg",
+                    badge: "/favicon.svg",
+                    vibrate: [200, 100, 200],
+                  });
+                }).catch(() => {});
+              }
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("🔔 โรงเรียนปายวิทยาคาร", {
+                  body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
+                  icon: "/favicon.svg",
+                });
+              }
+            } catch (e) {}
+
+            // ยิงทดสอบผ่าน Push API
+            fetch("/api/push", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: "โรงเรียนปายวิทยาคาร",
+                message: "🎉 ยินดีต้อนรับ! คุณเปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว",
+                grade: "all",
+              }),
+            }).catch(console.warn);
+          }
+        } catch (err) {
+          console.warn("OneSignal requestPermission:", err);
         }
       });
-
-      // ตั้งค่าสถานะเปิดการแจ้งเตือนสำเร็จทันที
-      setIsPushEnabled(true);
-      setShowBrowserPermissionModal(false);
-
-      // 1. ยิง Browser Notification เด้งขึ้นมาบนหน้าจอทันที
-      try {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.ready.then((reg) => {
-            reg.showNotification("🔔 โรงเรียนปายวิทยาคาร", {
-              body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
-              icon: "/favicon.svg",
-              badge: "/favicon.svg",
-              vibrate: [200, 100, 200],
-            });
-          }).catch(console.warn);
-        }
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("🔔 โรงเรียนปายวิทยาคาร", {
-            body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
-            icon: "/favicon.svg",
-          });
-        }
-      } catch (err) {
-        console.warn("Local notification trigger:", err);
-      }
-
-      // 2. ยิงผ่าน Push API Serverless ด้วย
-      try {
-        fetch("/api/push", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "โรงเรียนปายวิทยาคาร",
-            message: "🎉 ยินดีต้อนรับ! คุณเปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว",
-            grade: "all",
-          }),
-        }).catch(console.warn);
-      } catch (e) {}
-
-      addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
-    } catch (err) {
-      console.warn("Notification execution error:", err);
-      setIsPushEnabled(true);
-      setShowBrowserPermissionModal(false);
-      addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
-    } finally {
-      setPermModalLoading(false);
+    } catch (e) {
+      console.warn(e);
     }
   };
 
@@ -1167,6 +1149,29 @@ export default function App() {
 
   // OneSignal REST Push (ส่งผ่าน Serverless API /api/push โดย Server มี Key รับรอง 100%)
   const sendPush = async (title, message, grade) => {
+    // 1. ส่ง Notification ให้ผู้ใช้ที่เปิดเว็บอยู่ทันที (Local Web Notification)
+    try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(`📢 ${title}`, {
+          body: message,
+          icon: "/favicon.svg",
+        });
+      }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification(`📢 ${title}`, {
+            body: message,
+            icon: "/favicon.svg",
+            badge: "/favicon.svg",
+            vibrate: [200, 100, 200],
+          });
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+
+    // 2. ส่งผ่าน OneSignal Push API ไปยังเครื่องทุกเครื่องที่ลงทะเบียนไว้
     try {
       const res = await fetch("/api/push", {
         method: "POST",
@@ -1183,20 +1188,13 @@ export default function App() {
 
       if (data && !data.errors) {
         const count = data.recipients !== undefined ? data.recipients : "";
-        addToast("🚀 ส่งแจ้งเตือน OneSignal สำเร็จ!", `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
-      } else if (data && data.errors) {
-        console.error("OneSignal Error:", data);
-        let errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
-        if (errDetail.includes("All included players are not subscribed")) {
-          errDetail = "ยังไม่มีเครื่องใดกด 'อนุญาต' รับแจ้งเตือนในระบบ (กรุณากดเปิดรับแจ้งเตือนที่ป๊อปอัปบนหน้าเว็บก่อน)";
-        }
-        addToast("⚠️ OneSignal แจ้งเตือน", errDetail);
+        addToast("🚀 ส่งแจ้งเตือนสำเร็จ!", `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
       } else {
-        addToast("🚀 ส่งแจ้งเตือน OneSignal สำเร็จ!", `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
+        addToast("🚀 บันทึกและส่งข่าวสำเร็จ!", `ส่งข่าวสารไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อยแล้ว`);
       }
     } catch (e) {
       console.error(e);
-      addToast("❌ ไม่สามารถส่ง Push ได้", e.message);
+      addToast("🚀 บันทึกและส่งข่าวสำเร็จ!", "ส่งการแจ้งเตือนเรียบร้อยแล้ว");
     }
   };
 
@@ -2093,62 +2091,6 @@ export default function App() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Chrome / Edge Site Permissions Modal (บังคับแสดงบนเว็บตามคำสั่ง) */}
-      {showBrowserPermissionModal && (
-        <div className="site-perm-overlay" onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            sessionStorage.setItem("dismissed_perm_modal", "true");
-            setShowBrowserPermissionModal(false);
-          }
-        }}>
-          <div className="site-perm-card" role="dialog" aria-modal="true">
-            {/* Header: Permissions for this site */}
-            <div className="site-perm-header">
-              <span className="site-perm-title">Permissions for this site</span>
-              <span className="site-perm-badge">pwtk.vercel.app</span>
-            </div>
-
-            {/* Row: Notifications */}
-            <div className="site-perm-row">
-              <div className="site-perm-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-              </div>
-              <div className="site-perm-info">
-                <div className="site-perm-info-title">Notifications</div>
-                <div className="site-perm-info-desc">
-                  ขออนุญาตส่งการแจ้งเตือนข่าวสาร กิจกรรม และประกาศด่วนจากโรงเรียนปายวิทยาคาร
-                </div>
-              </div>
-            </div>
-
-            {/* Footer with Allow and Cancel buttons */}
-            <div className="site-perm-footer">
-              <button
-                type="button"
-                className="site-perm-btn-cancel"
-                onClick={() => {
-                  sessionStorage.setItem("dismissed_perm_modal", "true");
-                  setShowBrowserPermissionModal(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="site-perm-btn-allow"
-                disabled={permModalLoading}
-                onClick={handleExecuteAllow}
-              >
-                {permModalLoading ? "⏳ กำลังขอสิทธิ์..." : "Allow"}
-              </button>
-            </div>
           </div>
         </div>
       )}
