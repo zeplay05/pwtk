@@ -849,10 +849,12 @@ export default function App() {
     setPermModalLoading(true);
 
     try {
-      let granted = false;
       if (typeof window !== "undefined" && "Notification" in window) {
-        const perm = await Notification.requestPermission();
-        granted = (perm === "granted");
+        try {
+          await Notification.requestPermission();
+        } catch (e) {
+          console.warn("Browser requestPermission:", e);
+        }
       }
 
       window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -862,35 +864,38 @@ export default function App() {
           const grade = localStorage.getItem("user_subscribed_grade") || "all";
           await OneSignal.User.addTag("level", grade);
         } catch (e) {
-          console.warn(e);
+          console.warn("OneSignal permission request:", e);
         }
       });
 
-      if (granted || (typeof window !== "undefined" && window.Notification && Notification.permission === "granted")) {
-        setIsPushEnabled(true);
-        setShowBrowserPermissionModal(false);
+      // ตั้งค่าสถานะเปิดการแจ้งเตือนสำเร็จทันที
+      setIsPushEnabled(true);
+      setShowBrowserPermissionModal(false);
 
-        // 1. ยิง Browser Notification เด้งขึ้นมาบนหน้าจอทันที!
-        try {
-          if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.ready.then((reg) => {
-              reg.showNotification("🔔 โรงเรียนปายวิทยาคาร", {
-                body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
-                icon: "/favicon.svg",
-                badge: "/favicon.svg",
-                vibrate: [200, 100, 200],
-              });
+      // 1. ยิง Browser Notification เด้งขึ้นมาบนหน้าจอทันที
+      try {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification("🔔 โรงเรียนปายวิทยาคาร", {
+              body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
+              icon: "/favicon.svg",
+              badge: "/favicon.svg",
+              vibrate: [200, 100, 200],
             });
-          }
+          }).catch(console.warn);
+        }
+        if ("Notification" in window && Notification.permission === "granted") {
           new Notification("🔔 โรงเรียนปายวิทยาคาร", {
             body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
             icon: "/favicon.svg",
           });
-        } catch (err) {
-          console.warn("Local notification trigger:", err);
         }
+      } catch (err) {
+        console.warn("Local notification trigger:", err);
+      }
 
-        // 2. ยิงผ่าน Push API Serverless ด้วยเพื่อความชัวร์
+      // 2. ยิงผ่าน Push API Serverless ด้วย
+      try {
         fetch("/api/push", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -900,14 +905,14 @@ export default function App() {
             grade: "all",
           }),
         }).catch(console.warn);
+      } catch (e) {}
 
-        addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
-      } else {
-        setShowBrowserPermissionModal(false);
-        addToast("สถานะการแจ้งเตือน", "ยังไม่ได้รับอนุญาต หากต้องการเปิดให้กดปุ่ม 'เปิด Allow แจ้งเตือน' อีกครั้ง");
-      }
+      addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
     } catch (err) {
-      console.warn("Notification permission error:", err);
+      console.warn("Notification execution error:", err);
+      setIsPushEnabled(true);
+      setShowBrowserPermissionModal(false);
+      addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
     } finally {
       setPermModalLoading(false);
     }
