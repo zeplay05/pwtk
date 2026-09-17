@@ -874,6 +874,19 @@ export default function App() {
               addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว");
             }
           });
+
+          // ตรวจสอบเมื่อ OneSignal ได้รับ Subscription ID จาก Push Server
+          try {
+            if (OneSignal.User && OneSignal.User.PushSubscription) {
+              OneSignal.User.PushSubscription.addEventListener("change", (change) => {
+                console.log("🔔 [OneSignal] PushSubscription status:", change.current);
+                if (change.current && change.current.id) {
+                  console.log("🎉 [OneSignal] Subscribed successfully! ID:", change.current.id);
+                  setIsPushEnabled(true);
+                }
+              });
+            }
+          } catch (e) {}
         } catch (e) {
           console.warn("OneSignal Init Warning:", e);
         }
@@ -927,11 +940,9 @@ export default function App() {
     }
   };
 
-  // ดำเนินการกด Allow บนหน้าต่างสีดำ (คลิกเดียวจบ บันทึกสำเร็จทันที ไม่ต้องกดซ้ำ)
+  // ดำเนินการกด Allow บนหน้าต่างสีดำ (คลิกเดียวจบ ส่งคำขอเปิดสิทธิ์อย่างถูกต้อง ไม่ race condition)
   const handleExecuteAllow = async () => {
     setShowBrowserPermissionModal(false);
-    setIsPushEnabled(true);
-    addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
 
     try {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -939,52 +950,34 @@ export default function App() {
         try {
           console.log("🔔 [OneSignal] handleExecuteAllow: requesting permission...");
           await OneSignal.Notifications.requestPermission();
-          try {
-            if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
-              await OneSignal.User.PushSubscription.optIn();
-              console.log("🔔 [OneSignal] Subscribed ID:", OneSignal.User?.PushSubscription?.id);
+          
+          const isGranted = Boolean(OneSignal.Notifications.permission);
+          console.log("🔔 [OneSignal] Permission granted:", isGranted);
+
+          if (isGranted) {
+            setIsPushEnabled(true);
+            addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
+
+            try {
+              if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+                await OneSignal.User.PushSubscription.optIn();
+                console.log("🔔 [OneSignal] Subscribed ID:", OneSignal.User?.PushSubscription?.id);
+              }
+            } catch (optErr) {
+              console.warn("optIn error:", optErr);
             }
-          } catch (optErr) {
-            console.warn("optIn error:", optErr);
+
+            const grade = localStorage.getItem("user_subscribed_grade") || "all";
+            await OneSignal.User.addTag("level", grade);
+          } else {
+            console.log("🔔 [OneSignal] User dismissed or blocked notification permission");
           }
-          const grade = localStorage.getItem("user_subscribed_grade") || "all";
-          await OneSignal.User.addTag("level", grade);
         } catch (err) {
           console.warn("handleExecuteAllow error:", err);
         }
       });
-
-      // ยิงการแจ้งเตือนทดสอบ
-      try {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.ready.then((reg) => {
-            reg.showNotification("🔔 โรงเรียนปายวิทยาคาร", {
-              body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
-              icon: "/favicon.svg",
-              badge: "/favicon.svg",
-              vibrate: [200, 100, 200],
-            });
-          }).catch(() => {});
-        }
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("🔔 โรงเรียนปายวิทยาคาร", {
-            body: "🎉 เปิดรับการแจ้งเตือนสำเร็จแล้ว! คุณจะได้รับข่าวสารด่วนจากโรงเรียนทันที",
-            icon: "/favicon.svg",
-          });
-        }
-      } catch (e) {}
-
-      fetch("/api/push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: "โรงเรียนปายวิทยาคาร",
-          message: "🎉 ยินดีต้อนรับ! คุณเปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว",
-          grade: "all",
-        }),
-      }).catch(() => {});
     } catch (e) {
-      console.warn(e);
+      console.warn("handleExecuteAllow error:", e);
     }
   };
 
@@ -1220,7 +1213,7 @@ export default function App() {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(`📢 ${title}`, { body: message, icon: "/favicon.svg" });
       }
-      if ("serviceWorker" in navigator) {
+      if ("serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
         navigator.serviceWorker.ready.then((reg) => {
           reg.showNotification(`📢 ${title}`, {
             body: message,
