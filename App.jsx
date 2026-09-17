@@ -743,9 +743,6 @@ export default function App() {
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(false);
-  const [permModalLoading, setPermModalLoading] = useState(false);
-  const [permModalBlockedNotice, setPermModalBlockedNotice] = useState(false);
 
   // Admin Form State
   const [formTitle, setFormTitle] = useState("");
@@ -814,11 +811,11 @@ export default function App() {
     }
   };
 
-  // แสดงหน้าต่างสิทธิ์ Permissions Modal (ตามดีไซน์รูปที่ผู้ใช้ต้องการ) ให้อัตโนมัติเมื่อเข้าเว็บ
+  // ขอสิทธิ์ Native ของ Browser โดยตรงเมื่อเข้าหน้าเว็บ
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isGranted = "Notification" in window && Notification.permission === "granted";
-    if (isGranted) {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+
+    if (Notification.permission === "granted") {
       setIsPushEnabled(true);
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
@@ -829,83 +826,65 @@ export default function App() {
           console.warn(e);
         }
       });
-    } else {
-      const dismissed = sessionStorage.getItem("dismissed_perm_modal");
-      if (!dismissed) {
-        const timer = setTimeout(() => {
-          setShowBrowserPermissionModal(true);
-        }, 600);
-        return () => clearTimeout(timer);
-      }
+    } else if (Notification.permission === "default") {
+      // สั่งให้เบราว์เซอร์เด้งหน้าต่าง Native Allow ของ Browser ทันที
+      const timer = setTimeout(async () => {
+        try {
+          const perm = await Notification.requestPermission();
+          setIsPushEnabled(perm === "granted");
+          if (perm === "granted") {
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(async function (OneSignal) {
+              await OneSignal.Notifications.requestPermission();
+              const userSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
+              await OneSignal.User.addTag("level", userSubGrade);
+            });
+            addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
+          }
+        } catch (err) {
+          console.warn("Browser native prompt request:", err);
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [isPushEnabled]);
+  }, []);
 
   // ตรวจสอบแพลตฟอร์มของอุปกรณ์ (iOS / LINE / Android)
   const isIOS = typeof navigator !== "undefined" && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
   const isLineOrFB = typeof navigator !== "undefined" && /Line|FBAN|FBAV|Instagram/i.test(navigator.userAgent);
   const isNotificationDenied = typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied";
 
-  // ฟังก์ชันเปิดหน้าต่าง Permissions Modal
-  const handleEnablePushClick = () => {
-    setShowBrowserPermissionModal(true);
-  };
-
-  // รีเซ็ตสิทธิ์หรือแนะนำวิธีปลดบล็อก
-  const handleResetToDefault = () => {
-    sessionStorage.removeItem("dismissed_perm_modal");
-    setPermModalBlockedNotice(false);
-    alert("ℹ️ หากเบราว์เซอร์ของคุณเคยถูกบล็อกไว้:\n\n1. แตะที่ไอคอนรูปแม่กุญแจ 🔒 หรือตัวปรับแต่ง ด้านซ้ายของชื่อเว็บ pwtk.vercel.app บนแถบ URL\n2. เลือก 'สิทธิ์' (Permissions) > 'การแจ้งเตือน' (Notifications)\n3. เปลี่ยนเป็น 'อนุญาต' (Allow) แล้วกดรีเฟรชหน้าเว็บครับ");
-  };
-
-  // ดำเนินการขอสิทธิ์จริงจากปุ่ม Allow ในหน้าต่าง Permissions Modal
-  const handleExecuteAllow = async () => {
-    setPermModalLoading(true);
-    setPermModalBlockedNotice(false);
-
+  // ฟังก์ชันคลิกเพื่อเปิด Allow บน Browser ทันที (รองรับทั้งคอมและมือถือทุกค่าย)
+  const handleEnablePushClick = async () => {
     if (isLineOrFB) {
-      setPermModalLoading(false);
-      alert("⚠️ คุณกำลังเปิดเว็บผ่านแอป LINE / Facebook ซึ่งระบบจะไม่สามารถรับแจ้งเตือนได้\n\nวิธีแก้: กรุณากดปุ่ม 3 จุดมุมขวาบน แล้วเลือก 'เปิดในเบราว์เซอร์อื่น' หรือ 'Open in default browser' (Chrome/Safari) ครับ");
+      alert("⚠️ คุณกำลังเปิดเว็บผ่านแอป LINE / Facebook ซึ่งระบบจะไม่สามารถรับแจ้งเตือนได้\n\nวิธีแก้: กรุณากดปุ่ม 3 จุด (หรือแชร์) มุมขวาบน แล้วเลือก 'เปิดในเบราว์เซอร์อื่น' หรือ 'Open in default browser' (Chrome/Safari) ครับ");
       return;
     }
-
     if (isIOS) {
-      setPermModalLoading(false);
       alert("📱 สำหรับผู้ใช้ iPhone (iOS):\n\nApple กำหนดให้ต้องเพิ่มเว็บลงหน้าจอก่อนจึงจะรับการแจ้งเตือนได้ครับ\n\nวิธีเปิด:\n1. แตะปุ่มแชร์ ⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น) ที่แถบเมนู Safari ด้านล่าง\n2. เลื่อนลงมาเลือก 'เพิ่มไปยังหน้าจอโฮม' (Add to Home Screen)\n3. เปิดแอปจากไอคอนบนหน้าจอโฮมเพื่อรับการแจ้งเตือนได้ทันที!");
       return;
     }
-
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "denied") {
-        setPermModalLoading(false);
-        setPermModalBlockedNotice(true);
         alert("🔒 เบราว์เซอร์ของคุณเคยถูกกดบล็อกการแจ้งเตือนไว้ครับ\n\nวิธีปลดบล็อก:\n1. กดที่ไอคอนรูปแม่กุญแจ หรือ ตัวปรับตั้งค่า หน้าชื่อเว็บด้านบนสุด (ข้างซ้ายของ pwtk.vercel.app)\n2. ไปที่ 'สิทธิ์' (Permissions) > 'การแจ้งเตือน' (Notifications)\n3. เปลี่ยนเป็น 'อนุญาต' (Allow) แล้วกดรีเฟรชหน้าเว็บครับ");
         return;
       }
-
       try {
         const perm = await Notification.requestPermission();
+        setIsPushEnabled(perm === "granted");
         if (perm === "granted") {
-          setIsPushEnabled(true);
-          setShowBrowserPermissionModal(false);
-
           window.OneSignalDeferred = window.OneSignalDeferred || [];
           window.OneSignalDeferred.push(async function (OneSignal) {
             await OneSignal.Notifications.requestPermission();
             const grade = localStorage.getItem("user_subscribed_grade") || "all";
             await OneSignal.User.addTag("level", grade);
           });
-
           addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
-        } else if (perm === "denied") {
-          setPermModalBlockedNotice(true);
         }
       } catch (err) {
-        console.warn("Notification permission error:", err);
-      } finally {
-        setPermModalLoading(false);
+        console.warn(err);
       }
     } else {
-      setPermModalLoading(false);
       alert("เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน กรุณาเปิดผ่าน Google Chrome ครับ");
     }
   };
@@ -2091,119 +2070,6 @@ export default function App() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Site Permissions Modal (Chrome/Edge Dark Style as requested by User) */}
-      {showBrowserPermissionModal && (
-        <div className="site-perm-overlay" onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            sessionStorage.setItem("dismissed_perm_modal", "true");
-            setShowBrowserPermissionModal(false);
-          }
-        }}>
-          <div className="site-perm-card" role="dialog" aria-modal="true">
-            {/* Header: Permissions for this site */}
-            <div className="site-perm-header">
-              <span className="site-perm-title">Permissions for this site</span>
-              <span className="site-perm-badge">pwtk.vercel.app</span>
-            </div>
-
-            {/* Row: Notifications */}
-            <div className="site-perm-row">
-              <div className="site-perm-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-              </div>
-              <div className="site-perm-info">
-                <div className="site-perm-info-title">Notifications</div>
-                <div className="site-perm-info-desc">
-                  ขออนุญาตส่งการแจ้งเตือนข่าวสาร กิจกรรม และประกาศด่วนจากโรงเรียนปายวิทยาคาร
-                </div>
-              </div>
-            </div>
-
-            {/* In-app warning or blocked alert */}
-            {isLineOrFB && (
-              <div style={{
-                background: "rgba(239, 68, 68, 0.15)",
-                border: "1px solid rgba(239, 68, 68, 0.35)",
-                borderRadius: "10px",
-                padding: "10px 12px",
-                marginBottom: "14px",
-                color: "#fca5a5",
-                fontSize: "0.8rem",
-                lineHeight: "1.4"
-              }}>
-                ⚠️ คุณกำลังเปิดใน LINE/Facebook: กรุณากดปุ่ม 3 จุดมุมบน &gt; เลือก <strong>"เปิดในเบราว์เซอร์อื่น"</strong> เพื่อรับแจ้งเตือน
-              </div>
-            )}
-
-            {isIOS && (
-              <div style={{
-                background: "rgba(59, 130, 246, 0.15)",
-                border: "1px solid rgba(59, 130, 246, 0.35)",
-                borderRadius: "10px",
-                padding: "10px 12px",
-                marginBottom: "14px",
-                color: "#93c5fd",
-                fontSize: "0.8rem",
-                lineHeight: "1.4"
-              }}>
-                📱 <strong>iPhone (iOS):</strong> แตะปุ่มแชร์ ⎋ ด้านล่าง Safari &gt; เลือก <strong>"เพิ่มไปยังหน้าจอโฮม"</strong> แล้วเปิดแอปจากหน้าจอโฮม
-              </div>
-            )}
-
-            {(permModalBlockedNotice || isNotificationDenied) && (
-              <div style={{
-                background: "rgba(245, 158, 11, 0.15)",
-                border: "1px solid rgba(245, 158, 11, 0.35)",
-                borderRadius: "10px",
-                padding: "10px 12px",
-                marginBottom: "14px",
-                color: "#fcd34d",
-                fontSize: "0.8rem",
-                lineHeight: "1.4"
-              }}>
-                🔒 <strong>เบราว์เซอร์ถูกบล็อกไว้:</strong> ให้กดไอคอนแม่กุญแจ 🔒 หน้าชื่อเว็บด้านบนสุด แล้วเปลี่ยนการแจ้งเตือนเป็น <strong>"อนุญาต" (Allow)</strong>
-              </div>
-            )}
-
-            {/* Footer with Reset to default and Allow / Cancel buttons */}
-            <div className="site-perm-footer">
-              <button
-                type="button"
-                className="site-perm-btn-reset"
-                onClick={handleResetToDefault}
-                title="รีเซ็ตสิทธิ์หรือดูวิธีแก้หากกดไม่ได้"
-              >
-                Reset to default
-              </button>
-
-              <div className="site-perm-actions">
-                <button
-                  type="button"
-                  className="site-perm-btn-cancel"
-                  onClick={() => {
-                    sessionStorage.setItem("dismissed_perm_modal", "true");
-                    setShowBrowserPermissionModal(false);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="site-perm-btn-allow"
-                  disabled={permModalLoading}
-                  onClick={handleExecuteAllow}
-                >
-                  {permModalLoading ? "⏳ กำลังขอสิทธิ์..." : "Allow"}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
