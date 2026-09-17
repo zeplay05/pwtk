@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 // ระดับชั้นที่รองรับ
 const GRADE_OPTIONS = [
   { value: "all", label: "All (ทั้งหมด)", short: "All" },
-  { value: "m1", label: "มัธยมศึกษาปีที่ 1 (ม.1)", short: "ม.1" },
-  { value: "m2", label: "มัธยมศึกษาปีที่ 2 (ม.2)", short: "ม.2" },
-  { value: "m3", label: "มัธยมศึกษาปีที่ 3 (ม.3)", short: "ม.3" },
-  { value: "m4", label: "มัธยมศึกษาปีที่ 4 (ม.4)", short: "ม.4" },
-  { value: "m5", label: "มัธยมศึกษาปีที่ 5 (ม.5)", short: "ม.5" },
-  { value: "m6", label: "มัธยมศึกษาปีที่ 6 (ม.6)", short: "ม.6" },
+  { value: "m1", label: "มัธยมศึกษาปีที่ 1", short: "ม.1" },
+  { value: "m2", label: "มัธยมศึกษาปีที่ 2", short: "ม.2" },
+  { value: "m3", label: "มัธยมศึกษาปีที่ 3", short: "ม.3" },
+  { value: "m4", label: "มัธยมศึกษาปีที่ 4", short: "ม.4" },
+  { value: "m5", label: "มัธยมศึกษาปีที่ 5", short: "ม.5" },
+  { value: "m6", label: "มัธยมศึกษาปีที่ 6", short: "ม.6" },
   { value: "parent", label: "ผู้ปกครอง", short: "ผู้ปกครอง" },
 ];
 
@@ -638,6 +638,9 @@ export default function App() {
   // Subscriber State
   const [userGrade, setUserGrade] = useState(() => localStorage.getItem("user_subscribed_grade") || "");
   const [isPushEnabled, setIsPushEnabled] = useState(false);
+
+  // Windows-style Permission Prompt State
+  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   
   // Supabase Cloud Database Configuration (ซิงค์ข่าวสารทุกเครื่องแบบ Realtime)
   const SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || "https://uabmrftmulbminoeivqj.supabase.co";
@@ -760,26 +763,59 @@ export default function App() {
     }
   }, [newsList]);
 
-  // Subscriber Modal & Prompt State (เด้งขึ้นมาให้คนทั่วไปกดอนุญาตรับแจ้งเตือนได้ในคลิกเดียว)
-  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
-  const [modalGradeChoice, setModalGradeChoice] = useState("all");
-
-  // ตรวจจับ In-App Browser (Messenger, LINE, Facebook)
-  const isInAppBrowser = typeof navigator !== "undefined" && /FBAN|FBAV|Line|Instagram/i.test(navigator.userAgent || "");
-
-  // Auto-Prompt Modal สำหรับผู้ใช้ที่ยังไม่เคยกดยืนยันรับแจ้งเตือน
+  // แสดง Custom Windows-style Permission Prompt สำหรับผู้ใช้ที่เข้ามาครั้งแรก
   useEffect(() => {
-    const subscribed = localStorage.getItem("user_subscribed_grade");
-    const dismissed = sessionStorage.getItem("dismissed_subscribe_modal");
-    if (!subscribed && !dismissed) {
-      const timer = setTimeout(() => {
-        setShowSubscribeModal(true);
-      }, 1200);
-      return () => clearTimeout(timer);
+    const alreadySubscribed = localStorage.getItem("user_subscribed_grade");
+    const alreadyDismissed = localStorage.getItem("notification_prompt_dismissed");
+    if (alreadySubscribed || alreadyDismissed) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") {
+      // ถ้าเคย Allow แล้ว ไม่ต้องแสดง prompt
+      if (Notification.permission === "granted") {
+        setIsPushEnabled(true);
+      }
+      return;
     }
+
+    // หน่วงเวลา 2 วินาทีก่อนแสดง prompt เพื่อให้ผู้ใช้เห็นเนื้อหาก่อน
+    const timer = setTimeout(() => {
+      setShowPermissionPrompt(true);
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
-  // OneSignal Web SDK
+  // ฟังก์ชันเมื่อผู้ใช้กด "อนุญาต" บน Custom Prompt
+  const handleAllowNotification = async () => {
+    setShowPermissionPrompt(false);
+    try {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+          await OneSignal.Notifications.requestPermission();
+          await OneSignal.User.addTag("level", "all");
+          const perm = Boolean(OneSignal.Notifications.permission);
+          setIsPushEnabled(perm);
+          if (perm) {
+            localStorage.setItem("user_subscribed_grade", "all");
+            setUserGrade("all");
+            addToast("🎉 เปิดรับแจ้งเตือนสำเร็จ!", "คุณจะได้รับข่าวสารจากโรงเรียนทันที");
+          }
+        } catch (e) {
+          console.warn("OneSignal permission request error:", e);
+        }
+      });
+    } catch (err) {
+      console.warn("Notification permission error:", err);
+    }
+  };
+
+  // ฟังก์ชันเมื่อผู้ใช้กด "บล็อก" บน Custom Prompt
+  const handleBlockNotification = () => {
+    setShowPermissionPrompt(false);
+    localStorage.setItem("notification_prompt_dismissed", "true");
+  };
+
+  // OneSignal Web SDK — ปิด autoPrompt เพราะใช้ Custom Permission Prompt แทน
   useEffect(() => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     if (osAppId) {
@@ -787,27 +823,13 @@ export default function App() {
         try {
           await OneSignal.init({
             appId: osAppId,
-            notifyButton: { enable: true },
             allowLocalhostAsSecureOrigin: true,
+            // ปิด notifyButton (bell icon) และ autoPrompt — ใช้ custom prompt แทน
+            notifyButton: { enable: false },
+            autoResubscribe: true,
             promptOptions: {
-              slidedown: {
-                prompts: [
-                  {
-                    type: "push",
-                    autoPrompt: true,
-                    text: {
-                      actionMessage: "โรงเรียนปายวิทยาคารต้องการส่งการแจ้งเตือนข่าวสารด่วนถึงคุณ",
-                      acceptButton: "อนุญาต (Allow)",
-                      cancelButton: "บล็อก"
-                    },
-                    delay: {
-                      pageViews: 1,
-                      timeDelay: 1
-                    }
-                  }
-                ]
-              }
-            }
+              autoPrompt: false,
+            },
           });
           const perm = await OneSignal.Notifications.permission;
           setIsPushEnabled(Boolean(perm));
@@ -1063,32 +1085,28 @@ export default function App() {
         method: "DELETE",
       });
 
-      addToast("🗑️ ลบข่าวเรียบร้อย", `ลบข้อมูล "${title}" ออกจากระบบแล้ว`);
+      addToast("🗑️ ลบข่าวเรียบร้อย", `ลบข้อมูล "${title}" ออกจากระบบและ Cloud แล้ว`);
     }
   };
 
-  // OneSignal REST Push (ส่งผ่าน Serverless API /api/push เพื่อให้ Authorization Header ส่งได้สมบูรณ์และไม่ติด CORS)
+  // OneSignal REST Push (ส่งผ่าน Serverless API /api/push เพื่อให้ Authorization Header ส่งได้สมบูรณ์)
   const sendPush = async (title, message, grade) => {
     const effectiveApiKey = (osApiKey && osApiKey.trim().startsWith("os_v2_")) ? osApiKey.trim() : DEFAULT_OS_API_KEY;
     const effectiveAppId = (osAppId && osAppId.trim()) ? osAppId.trim() : DEFAULT_OS_APP_ID;
 
     if (effectiveAppId && effectiveApiKey) {
       try {
-        const payload = {
-          title,
-          message,
-          grade,
-          osAppId: effectiveAppId,
-          osApiKey: effectiveApiKey,
-          url: typeof window !== "undefined" ? window.location.origin : "",
-        };
-
         const res = await fetch("/api/push", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            message,
+            grade,
+            osAppId: effectiveAppId,
+            osApiKey: effectiveApiKey,
+            url: typeof window !== "undefined" ? window.location.origin : "",
+          }),
         });
 
         const data = await res.json().catch(() => null);
@@ -1098,7 +1116,10 @@ export default function App() {
           addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
         } else if (data && data.errors) {
           console.error("OneSignal Error:", data);
-          const errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
+          let errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
+          if (errDetail.includes("All included players are not subscribed")) {
+            errDetail = "ยังไม่มีอุปกรณ์ที่กด 'อนุญาต' แจ้งเตือนในระบบ (กรุณากดเปิดรับแจ้งเตือนที่ป๊อปอัปบนหน้าเว็บก่อน)";
+          }
           addToast("⚠️ OneSignal แจ้งเตือน", errDetail);
         } else {
           addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
@@ -1878,124 +1899,59 @@ export default function App() {
         </div>
       )}
 
-      {/* 5. Native Chrome / Windows Style Notification Permission Dialog Bar */}
-      {showSubscribeModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: "14px",
-            left: "16px",
-            zIndex: 9999,
-            width: "calc(100% - 32px)",
-            maxWidth: "420px",
-            background: "#ffffff",
-            borderRadius: "14px",
-            border: "1px solid #cbd5e1",
-            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(0,0,0,0.08)",
-            padding: "16px 18px",
-            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            animation: "slideDownPrompt 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-        >
-          {/* Header styled like Chrome address bar permission popup */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "12px" }}>
-            <div style={{ width: "38px", height: "38px", background: "#eff6ff", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", color: "#2563eb", flexShrink: 0 }}>
-              🔔
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.78rem", color: "#64748b", fontWeight: "600", marginBottom: "2px" }}>
-                <span>🔒</span>
-                <span>pwtk.vercel.app</span>
-                <span>ต้องการ</span>
-              </div>
-              <div style={{ fontSize: "0.95rem", fontWeight: "700", color: "#0f172a", lineHeight: "1.3" }}>
-                แสดงการแจ้งเตือน (Show notifications)
-              </div>
-              <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "2px" }}>
-                เพื่อรับข่าวสารด่วน ตารางเรียน และกิจกรรมโรงเรียน
-              </div>
-            </div>
-            <button
-              type="button"
-              style={{ border: "none", background: "none", color: "#94a3b8", fontSize: "1.1rem", cursor: "pointer", padding: "0 4px", lineHeight: "1" }}
-              onClick={() => {
-                sessionStorage.setItem("dismissed_subscribe_modal", "true");
-                setShowSubscribeModal(false);
-              }}
-              title="ปิด"
-            >
-              ✕
-            </button>
-          </div>
 
-          {isInAppBrowser && (
-            <div style={{ background: "#fef3c7", border: "1px solid #fde047", borderRadius: "8px", padding: "8px 10px", marginBottom: "12px", fontSize: "0.76rem", color: "#854d0e" }}>
-              ⚠️ คุณเปิดผ่านแอปแชท กรุณากด <strong>จุด 3 จุดมุมบน</strong> แล้วเลือก <strong>"เปิดใน Chrome"</strong>
+      {/* =========================================================
+          Windows-style Notification Permission Prompt
+          ========================================================= */}
+      {showPermissionPrompt && (
+        <div className="win-prompt-overlay">
+          <div className="win-prompt-card">
+            {/* หัวหน้าต่าง แบบ Windows */}
+            <div className="win-prompt-titlebar">
+              <div className="win-prompt-titlebar-left">
+                <div className="win-prompt-browser-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="#60a5fa" strokeWidth="2" fill="none"/>
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#3b82f6" opacity="0.15"/>
+                    <path d="M12 6v6l4 2" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <span className="win-prompt-site-name">{typeof window !== "undefined" ? window.location.hostname : "โรงเรียนปายวิทยาคาร"}</span>
+              </div>
+              <button className="win-prompt-close-btn" onClick={handleBlockNotification} title="ปิด">✕</button>
             </div>
-          )}
 
-          {/* Grade selection */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "14px" }}>
-            <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#475569", whiteSpace: "nowrap" }}>
-              🎓 ระดับชั้น:
-            </span>
-            <select
-              style={{ flex: 1, border: "none", background: "transparent", fontSize: "0.82rem", fontWeight: "600", color: "#0f172a", outline: "none", cursor: "pointer" }}
-              value={modalGradeChoice}
-              onChange={(e) => setModalGradeChoice(e.target.value)}
-            >
-              {GRADE_OPTIONS.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* เนื้อหาหลัก */}
+            <div className="win-prompt-body">
+              <div className="win-prompt-icon-wrap">
+                <div className="win-prompt-bell-ring">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C10.343 2 9 3.343 9 5V5.268C6.642 6.137 5 8.387 5 11V16L3 18V19H21V18L19 16V11C19 8.387 17.358 6.137 15 5.268V5C15 3.343 13.657 2 12 2Z" fill="#3b82f6"/>
+                    <path d="M12 22C13.105 22 14 21.105 14 20H10C10 21.105 10.895 22 12 22Z" fill="#60a5fa"/>
+                    <circle cx="18" cy="5" r="4" fill="#ef4444"/>
+                  </svg>
+                </div>
+              </div>
 
-          {/* Native-style Allow / Block Action Buttons */}
-          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-            <button
-              type="button"
-              style={{
-                padding: "8px 18px",
-                fontSize: "0.84rem",
-                fontWeight: "600",
-                background: "#f1f5f9",
-                color: "#475569",
-                border: "1px solid #cbd5e1",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-              onClick={() => {
-                sessionStorage.setItem("dismissed_subscribe_modal", "true");
-                setShowSubscribeModal(false);
-              }}
-            >
-              บล็อก
-            </button>
-            <button
-              type="button"
-              style={{
-                padding: "8px 22px",
-                fontSize: "0.84rem",
-                fontWeight: "700",
-                background: "#1a73e8",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(26, 115, 232, 0.35)",
-                transition: "all 0.15s",
-              }}
-              onClick={async () => {
-                await handleSubscribe(modalGradeChoice);
-                sessionStorage.setItem("dismissed_subscribe_modal", "true");
-                setShowSubscribeModal(false);
-              }}
-            >
-              อนุญาต (Allow)
-            </button>
+              <div className="win-prompt-text-content">
+                <h3 className="win-prompt-heading">
+                  โรงเรียนปายวิทยาคาร ต้องการแสดงการแจ้งเตือน
+                </h3>
+                <p className="win-prompt-description">
+                  คุณจะได้รับข่าวสารสำคัญ ประกาศ และกิจกรรมของโรงเรียนแบบ Real-time ทั้งบนคอมพิวเตอร์และมือถือ
+                </p>
+              </div>
+            </div>
+
+            {/* ปุ่มดำเนินการ */}
+            <div className="win-prompt-actions">
+              <button className="win-prompt-btn win-prompt-btn-block" onClick={handleBlockNotification}>
+                บล็อก
+              </button>
+              <button className="win-prompt-btn win-prompt-btn-allow" onClick={handleAllowNotification}>
+                อนุญาต
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -788,19 +788,22 @@ export default function App() {
   const handleAllowNotification = async () => {
     setShowPermissionPrompt(false);
     try {
-      if (window.OneSignal) {
-        await window.OneSignal.Notifications.requestPermission();
-        await window.OneSignal.User.addTag("level", "all");
-      } else {
-        await Notification.requestPermission();
-      }
-      const perm = Notification.permission;
-      setIsPushEnabled(perm === "granted");
-      if (perm === "granted") {
-        localStorage.setItem("user_subscribed_grade", "all");
-        setUserGrade("all");
-        addToast("🎉 เปิดรับแจ้งเตือนสำเร็จ!", "คุณจะได้รับข่าวสารจากโรงเรียนทันที");
-      }
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+          await OneSignal.Notifications.requestPermission();
+          await OneSignal.User.addTag("level", "all");
+          const perm = Boolean(OneSignal.Notifications.permission);
+          setIsPushEnabled(perm);
+          if (perm) {
+            localStorage.setItem("user_subscribed_grade", "all");
+            setUserGrade("all");
+            addToast("🎉 เปิดรับแจ้งเตือนสำเร็จ!", "คุณจะได้รับข่าวสารจากโรงเรียนทันที");
+          }
+        } catch (e) {
+          console.warn("OneSignal permission request error:", e);
+        }
+      });
     } catch (err) {
       console.warn("Notification permission error:", err);
     }
@@ -1113,7 +1116,10 @@ export default function App() {
           addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
         } else if (data && data.errors) {
           console.error("OneSignal Error:", data);
-          const errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
+          let errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
+          if (errDetail.includes("All included players are not subscribed")) {
+            errDetail = "ยังไม่มีอุปกรณ์ที่กด 'อนุญาต' แจ้งเตือนในระบบ (กรุณากดเปิดรับแจ้งเตือนที่ป๊อปอัปบนหน้าเว็บก่อน)";
+          }
           addToast("⚠️ OneSignal แจ้งเตือน", errDetail);
         } else {
           addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
