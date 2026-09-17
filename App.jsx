@@ -825,14 +825,20 @@ export default function App() {
     if (oneSignalInitRef.current) return;
     oneSignalInitRef.current = true;
 
+    // ลงทะเบียน Service Worker ทันทีเพื่อให้ระบบ Web Push ทำงาน
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/OneSignalSDKWorker.js", { scope: "/" }).catch(console.warn);
+    }
+
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     if (osAppId) {
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
           await OneSignal.init({
             appId: osAppId,
+            serviceWorkerPath: "/OneSignalSDKWorker.js",
+            serviceWorkerParam: { scope: "/" },
             allowLocalhostAsSecureOrigin: true,
-            autoResubscribe: true,
           });
 
           const perm = Boolean(OneSignal.Notifications.permission);
