@@ -638,6 +638,8 @@ export default function App() {
   // Subscriber State
   const [userGrade, setUserGrade] = useState(() => localStorage.getItem("user_subscribed_grade") || "");
   const [isPushEnabled, setIsPushEnabled] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subSuccess, setSubSuccess] = useState(false);
 
   // Windows-style Permission Prompt State
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
@@ -763,9 +765,27 @@ export default function App() {
     }
   }, [newsList]);
 
-  // ผู้ช่วยสำหรับขอสิทธิ์แจ้งเตือนและลงทะเบียนกับ OneSignal
+  // ผู้ช่วยสำหรับขอสิทธิ์แจ้งเตือนและลงทะเบียนกับ OneSignal (ทำงานทันทีทั้งคอมและมือถือ)
   const requestNotificationSubscription = async (gradeVal = "all") => {
+    if (!gradeVal) return;
+
+    // 1. บันทึกลง localStorage และ state ทันที 100% ไม่ติดเงื่อนไข
+    localStorage.setItem("user_subscribed_grade", gradeVal);
+    setUserGrade(gradeVal);
+    setIsSubscribing(true);
+    setSubSuccess(false);
+
     try {
+      // 2. ขอสิทธิ์เบราว์เซอร์โดยตรงด้วย User Gesture หากยังไม่เคยตอบ
+      if ("Notification" in window && Notification.permission === "default") {
+        try {
+          await Notification.requestPermission();
+        } catch (err) {
+          console.warn("Direct notification permission error:", err);
+        }
+      }
+
+      // 3. ซิงค์สิทธิ์และ Tag เข้า OneSignal
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
@@ -775,17 +795,20 @@ export default function App() {
           }
           const perm = Boolean(OneSignal.Notifications.permission);
           setIsPushEnabled(perm);
-          if (perm) {
-            localStorage.setItem("user_subscribed_grade", gradeVal);
-            setUserGrade(gradeVal);
-            addToast("🎉 เปิดรับแจ้งเตือนสำเร็จ!", `คุณจะได้รับข่าวสารของโรงเรียน (${getGradeLabel(gradeVal)})`);
-          }
         } catch (err) {
           console.warn("OneSignal subscription error:", err);
         }
       });
+
+      // 4. แจ้งเตือนสถานะสำเร็จให้ผู้ใช้ทราบทันที
+      setSubSuccess(true);
+      addToast("🎉 บันทึกระดับชั้นสำเร็จ!", `คุณได้เลือกรับข่าวสารของ "${getGradeLabel(gradeVal)}" เรียบร้อยแล้ว`);
+      setTimeout(() => setSubSuccess(false), 3000);
     } catch (e) {
-      console.warn("Permission error:", e);
+      console.warn("Subscription general error:", e);
+      addToast("บันทึกสำเร็จ", `เลือกระดับชั้น "${getGradeLabel(gradeVal)}" เรียบร้อย`);
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -1367,14 +1390,59 @@ export default function App() {
                 </div>
 
                 <button
-                  className="btn btn-dark btn-full"
+                  type="button"
+                  className={`btn btn-full ${subSuccess ? "btn-primary" : "btn-dark"}`}
+                  style={{
+                    padding: "0.75rem 1rem",
+                    minHeight: "44px",
+                    cursor: isSubscribing ? "not-allowed" : "pointer",
+                    transition: "all 0.25s ease",
+                    background: subSuccess ? "#16a34a" : undefined,
+                    color: "white",
+                    fontWeight: "600",
+                    fontSize: "0.85rem",
+                    borderRadius: "var(--radius-md)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    touchAction: "manipulation",
+                  }}
+                  disabled={isSubscribing}
                   onClick={() => {
-                    if (!userGrade) alert("กรุณาเลือกระดับชั้นก่อนครับ");
-                    else handleSubscribe(userGrade);
+                    if (!userGrade) {
+                      addToast("⚠️ แจ้งเตือน", "กรุณาเลือกระดับชั้นในช่องด้านบนก่อนกดยืนยันครับ");
+                    } else {
+                      handleSubscribe(userGrade);
+                    }
                   }}
                 >
-                  🔔 ยืนยันรับข่าวสารกลุ่มนี้
+                  {isSubscribing ? (
+                    <>⏳ กำลังบันทึก...</>
+                  ) : subSuccess ? (
+                    <>✅ บันทึกสำเร็จแล้ว ({getGradeShort(userGrade)})</>
+                  ) : (
+                    <>🔔 ยืนยันรับข่าวสารกลุ่มนี้</>
+                  )}
                 </button>
+
+                {userGrade && (
+                  <div style={{
+                    marginTop: "10px",
+                    padding: "8px 12px",
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "8px",
+                    fontSize: "0.78rem",
+                    color: "#166534",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
+                    <span>✓</span>
+                    <span>กำลังรับข่าวสารกลุ่ม: <strong>{getGradeLabel(userGrade)}</strong></span>
+                  </div>
+                )}
               </div>
 
             </aside>
