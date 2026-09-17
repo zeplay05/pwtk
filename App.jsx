@@ -838,10 +838,28 @@ export default function App() {
           const perm = Boolean(OneSignal.Notifications.permission);
           setIsPushEnabled(perm);
 
+          // ถ้าเบราว์เซอร์อนุญาตแล้ว ให้ sync ลงทะเบียนเข้า OneSignal Backend ทันที
+          if (perm) {
+            try {
+              if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+                await OneSignal.User.PushSubscription.optIn();
+              }
+              const grade = localStorage.getItem("user_subscribed_grade") || "all";
+              await OneSignal.User.addTag("level", grade);
+            } catch (e) {
+              console.warn("OneSignal optIn error:", e);
+            }
+          }
+
           // เมื่อผู้ใช้กด Allow บนเบราว์เซอร์
           OneSignal.Notifications.addEventListener("permissionChange", async (isGranted) => {
             setIsPushEnabled(isGranted);
             if (isGranted) {
+              try {
+                if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+                  await OneSignal.User.PushSubscription.optIn();
+                }
+              } catch (e) {}
               const grade = localStorage.getItem("user_subscribed_grade") || "all";
               await OneSignal.User.addTag("level", grade);
               addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว");
@@ -866,6 +884,9 @@ export default function App() {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
+          if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+            await OneSignal.User.PushSubscription.optIn();
+          }
           const userSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
           await OneSignal.User.addTag("level", userSubGrade);
         } catch (e) {}
@@ -875,9 +896,26 @@ export default function App() {
     }
   }, [isPushEnabled]);
 
-  // ฟังก์ชันเปิดหน้าต่าง Permissions Modal
+  // ฟังก์ชันเปิดหน้าต่าง Permissions Modal หรือ Sync อัตโนมัติหากอนุญาตแล้ว
   const handleEnablePushClick = () => {
-    setShowBrowserPermissionModal(true);
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+          if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+            await OneSignal.User.PushSubscription.optIn();
+          }
+          const grade = localStorage.getItem("user_subscribed_grade") || "all";
+          await OneSignal.User.addTag("level", grade);
+          setIsPushEnabled(true);
+          addToast("🎉 เชื่อมต่อระบบแจ้งเตือนสำเร็จ!", "ลงทะเบียนอุปกรณ์ของคุณกับ OneSignal เรียบร้อย");
+        } catch (e) {
+          console.warn(e);
+        }
+      });
+    } else {
+      setShowBrowserPermissionModal(true);
+    }
   };
 
   // ดำเนินการกด Allow บนหน้าต่างสีดำ (คลิกเดียวจบ บันทึกสำเร็จทันที ไม่ต้องกดซ้ำ)
