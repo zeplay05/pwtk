@@ -842,16 +842,17 @@ export default function App() {
             allowLocalhostAsSecureOrigin: true,
           });
 
-          const perm = Boolean(OneSignal.Notifications.permission);
+          const nativeGranted = typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted";
+          const perm = Boolean(OneSignal.Notifications.permission) || nativeGranted;
           setIsPushEnabled(perm);
-          console.log("🔔 [OneSignal] Init Done. Permission:", perm, "Subscribed ID:", OneSignal.User?.PushSubscription?.id);
+          console.log("🔔 [OneSignal] Init Done. Native:", typeof window !== "undefined" && "Notification" in window ? Notification.permission : "N/A", "| OneSignal:", OneSignal.Notifications.permission, "| Subscribed ID:", OneSignal.User?.PushSubscription?.id);
 
           // ถ้าเบราว์เซอร์อนุญาตแล้ว ให้ sync ลงทะเบียนเข้า OneSignal Backend ทันที
-          if (perm) {
+          if (nativeGranted || perm) {
             try {
               if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
                 await OneSignal.User.PushSubscription.optIn();
-                console.log("🔔 [OneSignal] PushSubscription optIn called successfully");
+                console.log("🔔 [OneSignal] PushSubscription optIn called successfully. ID:", OneSignal.User?.PushSubscription?.id);
               }
               const grade = localStorage.getItem("user_subscribed_grade") || "all";
               await OneSignal.User.addTag("level", grade);
@@ -957,10 +958,23 @@ export default function App() {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            console.log("🔔 [OneSignal] Native permission is already granted, opting in directly...");
+            if (OneSignal.User?.PushSubscription?.optIn) {
+              await OneSignal.User.PushSubscription.optIn();
+              console.log("🔔 [OneSignal] Subscribed ID:", OneSignal.User?.PushSubscription?.id);
+            }
+            setIsPushEnabled(true);
+            addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
+            const grade = localStorage.getItem("user_subscribed_grade") || "all";
+            await OneSignal.User.addTag("level", grade);
+            return;
+          }
+
           console.log("🔔 [OneSignal] handleExecuteAllow: requesting permission...");
           await OneSignal.Notifications.requestPermission();
           
-          const isGranted = Boolean(OneSignal.Notifications.permission);
+          const isGranted = Boolean(OneSignal.Notifications.permission) || (typeof window !== "undefined" && Notification.permission === "granted");
           console.log("🔔 [OneSignal] Permission granted:", isGranted);
 
           if (isGranted) {
