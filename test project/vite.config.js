@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const B64_KEY = 'b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE='
+const B64_KEY = 'b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNjbGtmb3JhajZhdXBmbWpiN3l4NGN1eTYyaHA1d2t3Y3htNHpyNG4zZnVoeG0yN2tkY3Fqc2VsaWNjZmdqejVweTJ2Nm5neWh6aHdta3k='
 
 // https://vite.dev/config/
 export default defineConfig({

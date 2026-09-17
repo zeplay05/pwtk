@@ -1,7 +1,7 @@
 // api/push.js
 // Vercel Serverless Function — ส่ง Push Notification ผ่าน OneSignal REST API
 
-const B64_KEY = "b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=";
+const B64_KEY = "b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNjbGtmb3JhajZhdXBmbWpiN3l4NGN1eTYyaHA1d2t3Y3htNHpyNG4zZnVoeG0yN2tkY3Fqc2VsaWNjZmdqejVweTJ2Nm5neWh6aHdta3k=";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {

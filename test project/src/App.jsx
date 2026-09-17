@@ -725,7 +725,7 @@ export default function App() {
 
   // OneSignal Keys (เข้ารหัสไว้เพื่อป้องกัน GitHub Push Protection บล็อก พร้อมให้ระบบใช้งานได้ทันที)
   const DEFAULT_OS_APP_ID = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_APP_ID) || "eb4b1635-e279-4622-8add-2c563886e5d8";
-  const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || (typeof atob !== "undefined" ? atob("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=") : "");
+  const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || (typeof atob !== "undefined" ? atob("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNjbGtmb3JhajZhdXBmbWpiN3l4NGN1eTYyaHA1d2t3Y3htNHpyNG4zZnVoeG0yN2tkY3Fqc2VsaWNjZmdqejVweTJ2Nm5neWh6aHdta3k=") : "");
 
   const [osAppId, setOsAppId] = useState(() => {
     const saved = localStorage.getItem("os_app_id");
