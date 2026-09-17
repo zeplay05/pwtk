@@ -793,6 +793,11 @@ export default function App() {
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
           await OneSignal.Notifications.requestPermission();
+          try {
+            if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+              await OneSignal.User.PushSubscription.optIn();
+            }
+          } catch (optErr) {}
           if (gradeVal) {
             await OneSignal.User.addTag("level", gradeVal);
           }
@@ -886,6 +891,11 @@ export default function App() {
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
           await OneSignal.Notifications.requestPermission();
+          try {
+            if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+              await OneSignal.User.PushSubscription.optIn();
+            }
+          } catch (optErr) {}
           const grade = localStorage.getItem("user_subscribed_grade") || "all";
           await OneSignal.User.addTag("level", grade);
         } catch (err) {
