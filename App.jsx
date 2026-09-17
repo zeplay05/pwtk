@@ -832,6 +832,7 @@ export default function App() {
 
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     if (osAppId) {
+      console.log("🔔 [OneSignal] Starting init with App ID:", osAppId);
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
           await OneSignal.init({
@@ -843,12 +844,14 @@ export default function App() {
 
           const perm = Boolean(OneSignal.Notifications.permission);
           setIsPushEnabled(perm);
+          console.log("🔔 [OneSignal] Init Done. Permission:", perm, "Subscribed ID:", OneSignal.User?.PushSubscription?.id);
 
           // ถ้าเบราว์เซอร์อนุญาตแล้ว ให้ sync ลงทะเบียนเข้า OneSignal Backend ทันที
           if (perm) {
             try {
               if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
                 await OneSignal.User.PushSubscription.optIn();
+                console.log("🔔 [OneSignal] PushSubscription optIn called successfully");
               }
               const grade = localStorage.getItem("user_subscribed_grade") || "all";
               await OneSignal.User.addTag("level", grade);
@@ -934,16 +937,20 @@ export default function App() {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
+          console.log("🔔 [OneSignal] handleExecuteAllow: requesting permission...");
           await OneSignal.Notifications.requestPermission();
           try {
             if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
               await OneSignal.User.PushSubscription.optIn();
+              console.log("🔔 [OneSignal] Subscribed ID:", OneSignal.User?.PushSubscription?.id);
             }
-          } catch (optErr) {}
+          } catch (optErr) {
+            console.warn("optIn error:", optErr);
+          }
           const grade = localStorage.getItem("user_subscribed_grade") || "all";
           await OneSignal.User.addTag("level", grade);
         } catch (err) {
-          console.warn(err);
+          console.warn("handleExecuteAllow error:", err);
         }
       });
 
