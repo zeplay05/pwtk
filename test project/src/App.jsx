@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // ระดับชั้นที่รองรับ
 const GRADE_OPTIONS = [
@@ -745,6 +745,8 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   // หน้าต่างสีดำ Permissions for this site บังคับแสดงทันทีเมื่อเข้าเว็บ
   const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(true);
+  // ป้องกันการ Init ซ้ำจาก React StrictMode ใน Dev Mode
+  const oneSignalInitRef = useRef(false);
 
   // Admin Form State
   const [formTitle, setFormTitle] = useState("");
@@ -815,6 +817,9 @@ export default function App() {
 
   // OneSignal Web SDK & ขอสิทธิ์ Native ของเบราว์เซอร์โดยตรง (1 คลิกจบ)
   useEffect(() => {
+    if (oneSignalInitRef.current) return;
+    oneSignalInitRef.current = true;
+
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     if (osAppId) {
       window.OneSignalDeferred.push(async function (OneSignal) {
