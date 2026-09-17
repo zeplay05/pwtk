@@ -743,7 +743,13 @@ export default function App() {
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(false);
+  // บังคับให้หน้าต่างเปิดทันทีเมื่อเข้าเว็บโดยไม่ต้องกดปุ่ม (ถ้ายังไม่ได้รับสิทธิ์)
+  const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(() => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      return false;
+    }
+    return true;
+  });
   const [permModalLoading, setPermModalLoading] = useState(false);
 
   // Admin Form State
@@ -846,12 +852,13 @@ export default function App() {
     }
   }, [osAppId]);
 
-  // แสดงหน้าต่างสิทธิ์ Permissions Modal สีดำ (ตามดีไซน์รูปภาพที่ต้องการ) อัตโนมัติเมื่อเข้าเว็บ
+  // บังคับแสดงหน้าต่าง Permissions Modal สีดำทันทีเมื่อเข้าเว็บ (ไม่ต้องกดปุ่มใดๆ)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const isGranted = "Notification" in window && Notification.permission === "granted";
     if (isGranted) {
       setIsPushEnabled(true);
+      setShowBrowserPermissionModal(false);
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function (OneSignal) {
         try {
@@ -862,13 +869,7 @@ export default function App() {
         }
       });
     } else {
-      const dismissed = sessionStorage.getItem("dismissed_perm_modal");
-      if (!dismissed) {
-        const timer = setTimeout(() => {
-          setShowBrowserPermissionModal(true);
-        }, 600);
-        return () => clearTimeout(timer);
-      }
+      setShowBrowserPermissionModal(true);
     }
   }, [isPushEnabled]);
 
@@ -2133,11 +2134,10 @@ export default function App() {
         </div>
       )}
 
-      {/* 5. Chrome / Edge Site Permissions Modal (ดีไซน์สีดำตามรูปที่ผู้ใช้ต้องการ) */}
+      {/* 5. Chrome / Edge Site Permissions Modal (บังคับแสดงทันทีเมื่อเข้าเว็บ) */}
       {showBrowserPermissionModal && (
         <div className="site-perm-overlay" onClick={(e) => {
           if (e.target === e.currentTarget) {
-            sessionStorage.setItem("dismissed_perm_modal", "true");
             setShowBrowserPermissionModal(false);
           }
         }}>
@@ -2169,10 +2169,7 @@ export default function App() {
               <button
                 type="button"
                 className="site-perm-btn-cancel"
-                onClick={() => {
-                  sessionStorage.setItem("dismissed_perm_modal", "true");
-                  setShowBrowserPermissionModal(false);
-                }}
+                onClick={() => setShowBrowserPermissionModal(false)}
               >
                 Cancel
               </button>
