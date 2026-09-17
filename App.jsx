@@ -1154,13 +1154,10 @@ export default function App() {
 
   // OneSignal REST Push (ส่งผ่าน Serverless API /api/push โดย Server มี Key รับรอง 100%)
   const sendPush = async (title, message, grade) => {
-    // 1. ส่ง Notification ให้ผู้ใช้ที่เปิดเว็บอยู่ทันที (Local Web Notification)
+    // 1. Local notification สำหรับคนที่เปิดเว็บอยู่ (เหมือนเดิม)
     try {
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`📢 ${title}`, {
-          body: message,
-          icon: "/favicon.svg",
-        });
+        new Notification(`📢 ${title}`, { body: message, icon: "/favicon.svg" });
       }
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.ready.then((reg) => {
@@ -1176,7 +1173,7 @@ export default function App() {
       console.warn(err);
     }
 
-    // 2. ส่งผ่าน OneSignal Push API ไปยังเครื่องทุกเครื่องที่ลงทะเบียนไว้
+    // 2. ส่งผ่าน OneSignal ไปยังทุกเครื่องที่ subscribe
     try {
       const res = await fetch("/api/push", {
         method: "POST",
@@ -1191,15 +1188,22 @@ export default function App() {
 
       const data = await res.json().catch(() => null);
 
-      if (data && !data.errors) {
+      // เช็คสถานะ HTTP จริง ไม่ใช่แค่เดาว่าสำเร็จ
+      if (res.ok && data && !data.errors) {
         const count = data.recipients !== undefined ? data.recipients : "";
-        addToast("🚀 ส่งแจ้งเตือนสำเร็จ!", `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
+        addToast(
+          "🚀 ส่งแจ้งเตือนสำเร็จ!",
+          `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`
+        );
       } else {
-        addToast("🚀 บันทึกและส่งข่าวสำเร็จ!", `ส่งข่าวสารไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อยแล้ว`);
+        // แสดง error จริงให้เห็น จะได้รู้ว่าพังตรงไหน
+        const errMsg = data?.errors ? JSON.stringify(data.errors) : `HTTP ${res.status}`;
+        console.error("Push send failed:", data);
+        addToast("❌ ส่งแจ้งเตือนไม่สำเร็จ", errMsg);
       }
     } catch (e) {
-      console.error(e);
-      addToast("🚀 บันทึกและส่งข่าวสำเร็จ!", "ส่งการแจ้งเตือนเรียบร้อยแล้ว");
+      console.error("Push fetch error:", e);
+      addToast("❌ เชื่อมต่อ API ไม่ได้", "ตรวจสอบว่า /api/push ใช้งานได้หรือไม่ (ต้องรันผ่าน vercel dev หรือ deploy แล้ว)");
     }
   };
 
