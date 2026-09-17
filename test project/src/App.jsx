@@ -922,28 +922,6 @@ export default function App() {
     }
   };
 
-  // OneSignal Web SDK
-  useEffect(() => {
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    if (osAppId) {
-      window.OneSignalDeferred.push(async function (OneSignal) {
-        try {
-          await OneSignal.init({
-            appId: osAppId,
-            allowLocalhostAsSecureOrigin: true,
-            autoResubscribe: true,
-          });
-          const perm = await OneSignal.Notifications.permission;
-          setIsPushEnabled(Boolean(perm));
-        } catch (e) {
-          console.warn("OneSignal Init Warning:", e);
-        }
-      });
-    } else if ("Notification" in window) {
-      setIsPushEnabled(Notification.permission === "granted");
-    }
-  }, [osAppId]);
-
   const addToast = (title, message) => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, title, message }]);
