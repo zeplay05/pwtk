@@ -2,10 +2,6 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/onesignal/:path*",
-      "destination": "https://api.onesignal.com/:path*"
-    },
-    {
       "source": "/((?!api|assets|OneSignalSDKWorker\\.js|favicon\\.svg|icons\\.svg).*)",
       "destination": "/index.html"
     }

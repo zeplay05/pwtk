@@ -1086,40 +1086,24 @@ export default function App() {
     }
   };
 
-  // OneSignal REST Push (ส่งผ่าน Vercel Rewrite Proxy /api/onesignal/ เพื่อหลีกเลี่ยง CORS)
+  // OneSignal REST Push (ส่งผ่าน Serverless API /api/push เพื่อให้ Authorization Header ส่งได้สมบูรณ์)
   const sendPush = async (title, message, grade) => {
     const effectiveApiKey = (osApiKey && osApiKey.trim().startsWith("os_v2_")) ? osApiKey.trim() : DEFAULT_OS_API_KEY;
     const effectiveAppId = (osAppId && osAppId.trim()) ? osAppId.trim() : DEFAULT_OS_APP_ID;
 
     if (effectiveAppId && effectiveApiKey) {
       try {
-        // สร้าง payload สำหรับ OneSignal REST API
-        const payload = {
-          app_id: effectiveAppId,
-          headings: { en: title },
-          contents: { en: message },
-          url: typeof window !== "undefined" ? window.location.origin : "",
-        };
-
-        // กรองตามระดับชั้น (grade)
-        if (grade && grade !== "all") {
-          payload.filters = [
-            { field: "tag", key: "level", relation: "=", value: grade },
-            { operator: "OR" },
-            { field: "tag", key: "level", relation: "=", value: "all" },
-          ];
-        } else {
-          payload.included_segments = ["Subscribed Users"];
-        }
-
-        // เรียกผ่าน Vercel Rewrite Proxy → OneSignal API (หลีกเลี่ยง CORS)
-        const res = await fetch("/api/onesignal/notifications", {
+        const res = await fetch("/api/push", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Key ${effectiveApiKey}`,
-          },
-          body: JSON.stringify(payload),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            message,
+            grade,
+            osAppId: effectiveAppId,
+            osApiKey: effectiveApiKey,
+            url: typeof window !== "undefined" ? window.location.origin : "",
+          }),
         });
 
         const data = await res.json().catch(() => null);
