@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/onesignal': {
-        target: 'https://onesignal.com/api/v1',
+        target: 'https://api.onesignal.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/onesignal/, ''),
       },
