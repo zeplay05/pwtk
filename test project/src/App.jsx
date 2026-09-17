@@ -763,50 +763,65 @@ export default function App() {
     }
   }, [newsList]);
 
-  // แสดง Custom Windows-style Permission Prompt สำหรับผู้ใช้ที่เข้ามาครั้งแรก
+  // ผู้ช่วยสำหรับขอสิทธิ์แจ้งเตือนและลงทะเบียนกับ OneSignal
+  const requestNotificationSubscription = async (gradeVal = "all") => {
+    try {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+          await OneSignal.Notifications.requestPermission();
+          if (gradeVal) {
+            await OneSignal.User.addTag("level", gradeVal);
+          }
+          const perm = Boolean(OneSignal.Notifications.permission);
+          setIsPushEnabled(perm);
+          if (perm) {
+            localStorage.setItem("user_subscribed_grade", gradeVal);
+            setUserGrade(gradeVal);
+            addToast("🎉 เปิดรับแจ้งเตือนสำเร็จ!", `คุณจะได้รับข่าวสารของโรงเรียน (${getGradeLabel(gradeVal)})`);
+          }
+        } catch (err) {
+          console.warn("OneSignal subscription error:", err);
+        }
+      });
+    } catch (e) {
+      console.warn("Permission error:", e);
+    }
+  };
+
+  // แสดง Custom Windows-style Permission Prompt สำหรับผู้ใช้ที่เข้ามา
   useEffect(() => {
-    const alreadySubscribed = localStorage.getItem("user_subscribed_grade");
-    const alreadyDismissed = localStorage.getItem("notification_prompt_dismissed");
-    if (alreadySubscribed || alreadyDismissed) return;
     if (!("Notification" in window)) return;
-    if (Notification.permission !== "default") {
-      // ถ้าเคย Allow แล้ว ไม่ต้องแสดง prompt
-      if (Notification.permission === "granted") {
-        setIsPushEnabled(true);
-      }
+
+    // ถ้าผู้ใช้เคยอนุญาตสิทธิ์เบราว์เซอร์แล้ว ให้ซิงค์ OneSignal อัตโนมัติทันที
+    if (Notification.permission === "granted") {
+      setIsPushEnabled(true);
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+          const userSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
+          await OneSignal.User.addTag("level", userSubGrade);
+        } catch (e) {
+          console.warn(e);
+        }
+      });
       return;
     }
 
-    // หน่วงเวลา 2 วินาทีก่อนแสดง prompt เพื่อให้ผู้ใช้เห็นเนื้อหาก่อน
+    const alreadyDismissed = localStorage.getItem("notification_prompt_dismissed");
+    if (alreadyDismissed) return;
+
+    // หน่วงเวลา 1.5 วินาทีก่อนแสดง prompt เพื่อให้ผู้ใช้เห็นหน้าเว็บก่อน
     const timer = setTimeout(() => {
       setShowPermissionPrompt(true);
-    }, 2000);
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
 
   // ฟังก์ชันเมื่อผู้ใช้กด "อนุญาต" บน Custom Prompt
   const handleAllowNotification = async () => {
     setShowPermissionPrompt(false);
-    try {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function (OneSignal) {
-        try {
-          await OneSignal.Notifications.requestPermission();
-          await OneSignal.User.addTag("level", "all");
-          const perm = Boolean(OneSignal.Notifications.permission);
-          setIsPushEnabled(perm);
-          if (perm) {
-            localStorage.setItem("user_subscribed_grade", "all");
-            setUserGrade("all");
-            addToast("🎉 เปิดรับแจ้งเตือนสำเร็จ!", "คุณจะได้รับข่าวสารจากโรงเรียนทันที");
-          }
-        } catch (e) {
-          console.warn("OneSignal permission request error:", e);
-        }
-      });
-    } catch (err) {
-      console.warn("Notification permission error:", err);
-    }
+    await requestNotificationSubscription("all");
   };
 
   // ฟังก์ชันเมื่อผู้ใช้กด "บล็อก" บน Custom Prompt
@@ -858,32 +873,10 @@ export default function App() {
     return found ? found.label : val;
   };
 
-  // Grade Subscription
+  // Grade Subscription (จากกล่องด้านขวา)
   const handleSubscribe = async (gradeVal) => {
     if (!gradeVal) return;
-
-    if (window.OneSignal) {
-      try {
-        // ขอสิทธิ์แจ้งเตือนแบบชัดเจน
-        await window.OneSignal.Notifications.requestPermission();
-        await window.OneSignal.User.addTag("level", gradeVal);
-        const perm = await window.OneSignal.Notifications.permission;
-        setIsPushEnabled(Boolean(perm));
-      } catch (err) {
-        console.warn("OneSignal subscribe error:", err);
-      }
-    } else if ("Notification" in window && Notification.permission !== "granted") {
-      try {
-        const perm = await Notification.requestPermission();
-        setIsPushEnabled(perm === "granted");
-      } catch (e) {
-        console.warn(e);
-      }
-    }
-
-    setUserGrade(gradeVal);
-    localStorage.setItem("user_subscribed_grade", gradeVal);
-    addToast("🎉 บันทึกระดับชั้นสำเร็จ!", `คุณได้เลือกรับแจ้งเตือนเฉพาะกลุ่ม "${getGradeLabel(gradeVal)}"`);
+    await requestNotificationSubscription(gradeVal);
   };
 
   // Admin Login
@@ -1089,47 +1082,38 @@ export default function App() {
     }
   };
 
-  // OneSignal REST Push (ส่งผ่าน Serverless API /api/push เพื่อให้ Authorization Header ส่งได้สมบูรณ์)
+  // OneSignal REST Push (ส่งผ่าน Serverless API /api/push โดย Server มี Key รับรอง 100%)
   const sendPush = async (title, message, grade) => {
-    const effectiveApiKey = (osApiKey && osApiKey.trim().startsWith("os_v2_")) ? osApiKey.trim() : DEFAULT_OS_API_KEY;
-    const effectiveAppId = (osAppId && osAppId.trim()) ? osAppId.trim() : DEFAULT_OS_APP_ID;
+    try {
+      const res = await fetch("/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          message,
+          grade,
+          url: typeof window !== "undefined" ? window.location.origin : "",
+        }),
+      });
 
-    if (effectiveAppId && effectiveApiKey) {
-      try {
-        const res = await fetch("/api/push", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title,
-            message,
-            grade,
-            osAppId: effectiveAppId,
-            osApiKey: effectiveApiKey,
-            url: typeof window !== "undefined" ? window.location.origin : "",
-          }),
-        });
+      const data = await res.json().catch(() => null);
 
-        const data = await res.json().catch(() => null);
-
-        if (data && !data.errors) {
-          const count = data.recipients !== undefined ? data.recipients : "";
-          addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
-        } else if (data && data.errors) {
-          console.error("OneSignal Error:", data);
-          let errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
-          if (errDetail.includes("All included players are not subscribed")) {
-            errDetail = "ยังไม่มีอุปกรณ์ที่กด 'อนุญาต' แจ้งเตือนในระบบ (กรุณากดเปิดรับแจ้งเตือนที่ป๊อปอัปบนหน้าเว็บก่อน)";
-          }
-          addToast("⚠️ OneSignal แจ้งเตือน", errDetail);
-        } else {
-          addToast("🚀 OneSignal Push Sent", `ส่งการแจ้งเตือนไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
+      if (data && !data.errors) {
+        const count = data.recipients !== undefined ? data.recipients : "";
+        addToast("🚀 ส่งแจ้งเตือน OneSignal สำเร็จ!", `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย ${count !== "" ? `(${count} เครื่อง)` : ""}`);
+      } else if (data && data.errors) {
+        console.error("OneSignal Error:", data);
+        let errDetail = Array.isArray(data.errors) ? data.errors.join(", ") : JSON.stringify(data.errors);
+        if (errDetail.includes("All included players are not subscribed")) {
+          errDetail = "ยังไม่มีเครื่องใดกด 'อนุญาต' รับแจ้งเตือนในระบบ (กรุณากดเปิดรับแจ้งเตือนที่ป๊อปอัปบนหน้าเว็บก่อน)";
         }
-      } catch (e) {
-        console.error(e);
-        addToast("❌ ไม่สามารถส่ง Push ได้", e.message);
+        addToast("⚠️ OneSignal แจ้งเตือน", errDetail);
+      } else {
+        addToast("🚀 ส่งแจ้งเตือน OneSignal สำเร็จ!", `ส่งไปยังกลุ่ม "${getGradeLabel(grade)}" เรียบร้อย`);
       }
-    } else {
-      addToast(`📢 [จำลองแจ้งเตือน OneSignal]`, `${title} (กลุ่ม: ${getGradeShort(grade)})`);
+    } catch (e) {
+      console.error(e);
+      addToast("❌ ไม่สามารถส่ง Push ได้", e.message);
     }
   };
 

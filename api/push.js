@@ -1,8 +1,9 @@
 // Vercel Serverless Function: /api/push
-// ส่ง Push Notification ผ่าน OneSignal REST API (server-side เพื่อหลีกเลี่ยง CORS และส่ง Authorization Header ได้อย่างปลอดภัย)
+// ส่ง Push Notification ผ่าน OneSignal REST API (server-side เพื่อหลีกเลี่ยง CORS และป้องกันปัญหา Header)
 
-const DEFAULT_OS_APP_ID = process.env.ONESIGNAL_APP_ID || "eb4b1635-e279-4622-8add-2c563886e5d8";
-const DEFAULT_OS_API_KEY = process.env.ONESIGNAL_API_KEY || (typeof Buffer !== "undefined" ? Buffer.from("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=", "base64").toString("utf-8") : "");
+const B64_KEY = "b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNhenRuNmIzbmRqdTMyZWprY3I0aXN4c3VtcDI0aXR2MmFncGprcWdvNWhvZzd6cmJwaHRzcTZpZnI1ZGtianpub2V6bXM1Z3Jma3NneXE=";
+const SERVER_OS_APP_ID = process.env.ONESIGNAL_APP_ID || "eb4b1635-e279-4622-8add-2c563886e5d8";
+const SERVER_OS_API_KEY = process.env.ONESIGNAL_API_KEY || (typeof Buffer !== "undefined" ? Buffer.from(B64_KEY, "base64").toString("utf-8") : "");
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -11,23 +12,14 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
-    const { title, message, grade, osAppId, osApiKey, url } = body;
-
-    const effectiveAppId = (osAppId && typeof osAppId === "string" && osAppId.trim()) 
-      ? osAppId.trim() 
-      : DEFAULT_OS_APP_ID;
-
-    // ถ้า client ส่งมาแล้วถูกต้อง (เริ่มด้วย os_v2_ หรือมีความยาว) ให้ใช้ของ client ไม่เช่นนั้นใช้ DEFAULT_OS_API_KEY
-    const effectiveApiKey = (osApiKey && typeof osApiKey === "string" && osApiKey.trim().startsWith("os_v2_"))
-      ? osApiKey.trim()
-      : DEFAULT_OS_API_KEY;
+    const { title, message, grade, url } = body;
 
     if (!title || !message) {
       return res.status(400).json({ error: "Missing title or message" });
     }
 
     const payload = {
-      app_id: effectiveAppId,
+      app_id: SERVER_OS_APP_ID,
       headings: { en: title },
       contents: { en: message },
       ...(url ? { url } : {}),
@@ -47,7 +39,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Key ${effectiveApiKey}`,
+        Authorization: `Key ${SERVER_OS_API_KEY}`,
       },
       body: JSON.stringify(payload),
     });
