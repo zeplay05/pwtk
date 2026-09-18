@@ -1148,7 +1148,7 @@ export default function App() {
       setShowLoginModal(false);
       setView("admin");
       setAdminPin("");
-      addToast("เข้าสู่ระบบสำเร็จ", "เข้าสู่แผงควบคุมคุณครู (หลังบ้าน)");
+      addToast("เข้าสู่ระบบสำเร็จ", "เข้าสู่แผงควบคุม (หลังบ้าน)");
     } else {
       alert("รหัสผ่านไม่ถูกต้อง (รหัสเริ่มต้น: 1234 หรือ admin)");
     }
@@ -1455,7 +1455,7 @@ export default function App() {
               }
             }}
           >
-            {isAdminLoggedIn ? "⚙️ แผงควบคุมคุณครู (Admin)" : "🔒 เข้าสู่ระบบครู"}
+            {isAdminLoggedIn ? "⚙️ แผงควบคุม (Admin)" : "🔒 เข้าสู่ระบบ"}
           </button>
         </div>
 
@@ -2074,19 +2074,19 @@ export default function App() {
             <div className="modal-title-bar">
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <img src="/assets/pwtk.png" alt="" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "700" }}>เข้าสู่ระบบครู (Admin)</h3>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "700" }}>เข้าสู่ระบบ (Admin)</h3>
               </div>
               <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "1.2rem" }} onClick={() => setShowLoginModal(false)}>✕</button>
             </div>
             <form onSubmit={handleLogin}>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ fontSize: "0.85rem", fontWeight: "600", display: "block", marginBottom: "4px" }}>
-                  กรอกรหัสผ่าน (PIN):
+                  กรอกรหัสผ่าน (PIN)
                 </label>
                 <input
                   type="password"
                   className="input-pill"
-                  placeholder="รหัสเริ่มต้นคือ: 1234"
+                  placeholder="กรอกรหัสผ่าน"
                   value={adminPin}
                   onChange={(e) => setAdminPin(e.target.value)}
                   autoFocus
@@ -2094,7 +2094,7 @@ export default function App() {
                 />
               </div>
               <button type="submit" className="btn btn-dark btn-full">
-                เข้าสู่หน้าจัดการ
+                เข้าสู่หน้าจัดการข่าวสาร
               </button>
             </form>
           </div>
