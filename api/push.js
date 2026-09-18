@@ -43,15 +43,19 @@ export default async function handler(req, res) {
     chrome_web_icon: "https://pwtk.vercel.app/favicon.svg",
     chrome_web_badge: "https://pwtk.vercel.app/favicon.svg",
     firefox_icon: "https://pwtk.vercel.app/favicon.svg",
+    priority: 10, // ความสำคัญสูงสุด ปลุกจอมือถือทันทีแม้เปิดโหมดประหยัดพลังงาน
+    ttl: 259200, // เก็บแจ้งเตือนไว้ 3 วัน หากมือถือปิดเครื่องอยู่ เปิดมาจะได้รับทันที
   };
 
   if (!grade || grade === "all") {
-    payload.included_segments = ["Subscribed Users"];
+    payload.included_segments = ["Subscribed Users", "Total Subscriptions", "All"];
   } else {
     payload.filters = [
       { field: "tag", key: "level", relation: "=", value: grade },
       { operator: "OR" },
       { field: "tag", key: "level", relation: "=", value: "all" },
+      { operator: "OR" },
+      { field: "tag", key: "level", relation: "!exists" }, // รวมเครื่องมือถือที่เพิ่งกด Allow ใหม่ๆ ที่ยังไม่มีแท็ก
     ];
   }
 
@@ -72,7 +76,7 @@ export default async function handler(req, res) {
       const errStr = JSON.stringify(data.errors);
       if (errStr.includes("All included players are not subscribed") && payload.filters) {
         delete payload.filters;
-        payload.included_segments = ["Subscribed Users"];
+        payload.included_segments = ["Subscribed Users", "Total Subscriptions", "All"];
         response = await fetch("https://api.onesignal.com/notifications", {
           method: "POST",
           headers: {

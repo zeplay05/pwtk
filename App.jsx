@@ -945,8 +945,20 @@ export default function App() {
   const handleExecuteAllow = async () => {
     setShowBrowserPermissionModal(false);
 
+    const isIOS = typeof navigator !== "undefined" && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+    const isStandalone = typeof window !== "undefined" && (window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches);
+
+    // Apple iOS (iPhone/iPad): Apple กำหนดให้ผู้ใช้ต้องกดเพิ่มไปยังหน้าจอโฮม (Add to Home Screen) ก่อนเสมอจึงจะเปิด Web Push ได้
+    if (isIOS && !isStandalone) {
+      addToast(
+        "📱 สำหรับผู้ใช้ iPhone / iPad",
+        "กดปุ่มแชร์ [ ⬆️ ] แถบล่างของ Safari แล้วเลือก 'เพิ่มไปยังหน้าจอโฮม' (Add to Home Screen) เพื่อรับการแจ้งเตือน"
+      );
+      return;
+    }
+
     if (typeof window === "undefined" || !("Notification" in window)) {
-      addToast("⚠️ ไม่รองรับการแจ้งเตือน", "เบราว์เซอร์นี้ไม่รองรับระบบ Web Push");
+      addToast("⚠️ ไม่รองรับการแจ้งเตือน", "เบราว์เซอร์นี้ไม่รองรับระบบ Web Push กรุณาเปิดด้วย Chrome หรือ Safari");
       return;
     }
 
@@ -1384,29 +1396,6 @@ export default function App() {
               🚪 ออกจากระบบ
             </button>
           )}
-          {/* ปุ่มขอสิทธิ์ Native ของ Browser หากยังไม่ได้อนุญาต */}
-          {typeof window !== "undefined" && !isPushEnabled && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{
-                padding: "6px 14px",
-                fontSize: "0.82rem",
-                background: "#fef3c7",
-                color: "#92400e",
-                border: "1px solid #fde68a",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-              onClick={handleEnablePushClick}
-              title="คลิกเพื่อเปิดหน้าต่างอนุญาตการแจ้งเตือนของเบราว์เซอร์"
-            >
-              🔔 เปิด Allow แจ้งเตือน
-            </button>
-          )}
-
           {typeof window !== "undefined" && isPushEnabled && (
             <div
               style={{
