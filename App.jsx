@@ -1143,14 +1143,14 @@ export default function App() {
   // Admin Login
   const handleLogin = (e) => {
     e.preventDefault();
-    if (adminPin === "1234" || adminPin.trim() === "admin") {
+    if (adminPin === "8954" || adminPin.trim() === "admin") {
       setIsAdminLoggedIn(true);
       setShowLoginModal(false);
       setView("admin");
       setAdminPin("");
       addToast("เข้าสู่ระบบสำเร็จ", "เข้าสู่แผงควบคุม (หลังบ้าน)");
     } else {
-      alert("รหัสผ่านไม่ถูกต้อง (รหัสเริ่มต้น: 1234 หรือ admin)");
+      alert("รหัสผ่านไม่ถูกต้อง");
     }
   };
 
