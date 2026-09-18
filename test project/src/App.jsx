@@ -602,6 +602,11 @@ const INITIAL_NEWS = [
     grade: "all",
     tags: ["#วัคซีน", "#สุขภาพ", "#อนามัย"],
     summary: "สาธารณสุขจังหวัดจัดบริการฉีดวัคซีนไข้หวัดใหญ่ฟรีสำหรับนักเรียนทุกคน โปรดส่งใบยินยอมจากผู้ปกครองก่อนวันฉีด",
+    image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80",
+    isHero: false,
+  }
+];
+
 // ฟังก์ชันคำนวณเวลาแบบ Real-time ภาษาไทย (นาที, ชั่วโมง, วัน, สัปดาห์, เดือน, ปี)
 function formatTimeAgo(timestamp, fallback) {
   if (!timestamp) return fallback || "เมื่อสักครู่";
