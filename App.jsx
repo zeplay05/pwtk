@@ -2210,13 +2210,7 @@ export default function App() {
               <div className="site-perm-info">
                 <div className="site-perm-info-title">Notifications</div>
                 <div className="site-perm-info-desc">
-                  {typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied" ? (
-                    <span style={{ color: "#f87171" }}>
-                      ⚠️ เบราว์เซอร์ของคุณกำลังบล็อกการแจ้งเตือนไว้: ให้คลิกที่ไอคอน 🔒 หรือ 🎛️ ข้างช่องใส่ชื่อเว็บด้านบนสุด แล้วเปลี่ยนเป็น "อนุญาต (Allow)"
-                    </span>
-                  ) : (
-                    "ขออนุญาตส่งการแจ้งเตือนข่าวสาร กิจกรรม และประกาศด่วนจากโรงเรียนปายวิทยาคาร"
-                  )}
+                  ขออนุญาตส่งการแจ้งเตือนข่าวสาร กิจกรรม และประกาศด่วนจากโรงเรียนปายวิทยาคาร
                 </div>
               </div>
             </div>
