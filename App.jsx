@@ -1414,7 +1414,7 @@ export default function App() {
             className={`nav-pill ${view === "feed" && activeFilter === "all" ? "active" : ""}`}
             onClick={() => { setView("feed"); setActiveFilter("all"); }}
           >
-            หน้าหลัก (Feed)
+            หน้าหลัก
           </button>
 
           <button
@@ -1497,7 +1497,7 @@ export default function App() {
         <div>
           {/* Breadcrumb & Headline */}
           <div className="breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <img src="/assets/pwtk.png" alt="" style={{ width: "16px", height: "16px", objectFit: "contain" }} />
+            
             <span>โรงเรียนปายวิทยาคาร</span> <span>/</span> ข่าวประชาสัมพันธ์ & กิจกรรม
           </div>
 
@@ -1540,15 +1540,10 @@ export default function App() {
                 }}
                 onClick={handleEnablePushClick}
               >
-                🔔 กดเปิด Allow แจ้งเตือน
+              กดเปิด Allow แจ้งเตือน
               </button>
             </div>
           )}
-
-          <div className="page-headline-row" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <img src="/assets/pwtk.png" alt="ตราประจำโรงเรียนปายวิทยาคาร" style={{ width: "44px", height: "44px", objectFit: "contain" }} />
-            <h1 className="main-title" style={{ margin: 0 }}>โรงเรียนปายวิทยาคาร</h1>
-          </div>
 
           {/* Category Filter Pills */}
           <div className="category-filter-row">
@@ -1928,7 +1923,7 @@ export default function App() {
             <span className="footer-title">โรงเรียนปายวิทยาคาร</span>
           </div>
           <div className="footer-credit">
-            ⚡ Power By Natthanicha Yana
+          Power By Natthanicha Yana
           </div>
           <div className="footer-copyright">
             © {new Date().getFullYear()} โรงเรียนปายวิทยาคาร • ระบบเว็บข่าวสารและแจ้งเตือนด่วน
