@@ -2098,18 +2098,7 @@ export default function App() {
               )}
 
               {/* Footer Actions */}
-              <div className="article-footer-bar">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    if (navigator.clipboard) {
-                      navigator.clipboard.writeText(window.location.href);
-                    }
-                    addToast("🔗 คัดลอกลิงก์แล้ว", "คัดลอกลิงก์ข่าวสารเรียบร้อย");
-                  }}
-                >
-                  🔗 แชร์ข่าวสาร
-                </button>
+              <div className="article-footer-bar" style={{ justifyContent: "flex-end" }}>
                 <button
                   className="btn btn-dark"
                   onClick={() => setReadingArticle(null)}
