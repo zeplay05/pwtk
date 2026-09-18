@@ -888,10 +888,26 @@ body {
   max-width: 680px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   padding: 0;
-  overflow: hidden;
   position: relative;
+}
+
+.article-modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+.article-modal-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+.article-modal-card::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.25);
+  border-radius: 9999px;
+}
+.article-modal-card::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.45);
 }
 
 .article-modal-header {
@@ -1061,6 +1077,9 @@ body {
     border-radius: 20px 20px 0 0;
     max-height: 90vh;
     width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
   .article-modal-header {
     height: 195px;
