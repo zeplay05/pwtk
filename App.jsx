@@ -1324,14 +1324,14 @@ export default function App() {
     // 1. Local notification สำหรับคนที่เปิดเว็บอยู่ (เหมือนเดิม)
     try {
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`📢 ${title}`, { body: message, icon: "/favicon.svg" });
+        new Notification(`📢 ${title}`, { body: message, icon: "/assets/pwtk.png" });
       }
       if ("serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
         navigator.serviceWorker.ready.then((reg) => {
           reg.showNotification(`📢 ${title}`, {
             body: message,
-            icon: "/favicon.svg",
-            badge: "/favicon.svg",
+            icon: "/assets/pwtk.png",
+            badge: "/assets/pwtk.png",
             vibrate: [200, 100, 200],
           });
         }).catch(() => {});
@@ -1406,7 +1406,7 @@ export default function App() {
       <header className="top-nav">
         <div className="nav-left-pills">
           <div className="logo-pill" onClick={() => { setView("feed"); setActiveFilter("all"); }}>
-            <span style={{ fontSize: "1.05rem" }}>🏫</span>
+            <img src="/assets/pwtk.png" alt="โลโก้โรงเรียนปายวิทยาคาร" style={{ width: "22px", height: "22px", objectFit: "contain" }} />
             <span>โรงเรียนปายวิทยาคาร</span>
           </div>
 
@@ -1496,8 +1496,9 @@ export default function App() {
       {view === "feed" ? (
         <div>
           {/* Breadcrumb & Headline */}
-          <div className="breadcrumb">
-            โรงเรียนปายวิทยาคาร <span>/</span> ข่าวประชาสัมพันธ์ & กิจกรรม
+          <div className="breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <img src="/assets/pwtk.png" alt="" style={{ width: "16px", height: "16px", objectFit: "contain" }} />
+            <span>โรงเรียนปายวิทยาคาร</span> <span>/</span> ข่าวประชาสัมพันธ์ & กิจกรรม
           </div>
 
           {/* Notification Status Banner (แสดงชัดเจนสำหรับทุกอุปกรณ์) */}
@@ -1544,8 +1545,9 @@ export default function App() {
             </div>
           )}
 
-          <div className="page-headline-row">
-            <h1 className="main-title">โรงเรียนปายวิทยาคาร</h1>
+          <div className="page-headline-row" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <img src="/assets/pwtk.png" alt="ตราประจำโรงเรียนปายวิทยาคาร" style={{ width: "44px", height: "44px", objectFit: "contain" }} />
+            <h1 className="main-title" style={{ margin: 0 }}>โรงเรียนปายวิทยาคาร</h1>
           </div>
 
           {/* Category Filter Pills */}
@@ -2002,7 +2004,10 @@ export default function App() {
         <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: "360px" }}>
             <div className="modal-title-bar">
-              <h3 style={{ fontSize: "1.1rem", fontWeight: "700" }}>🔒 เข้าสู่ระบบครู (Admin)</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <img src="/assets/pwtk.png" alt="" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "700" }}>เข้าสู่ระบบครู (Admin)</h3>
+              </div>
               <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "1.2rem" }} onClick={() => setShowLoginModal(false)}>✕</button>
             </div>
             <form onSubmit={handleLogin}>
@@ -2258,7 +2263,10 @@ export default function App() {
           <div className="site-perm-card" role="dialog" aria-modal="true">
             {/* Header: Permissions for this site */}
             <div className="site-perm-header">
-              <span className="site-perm-title">Permissions for this site</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <img src="/assets/pwtk.png" alt="โลโก้โรงเรียนปายวิทยาคาร" style={{ width: "18px", height: "18px", objectFit: "contain" }} />
+                <span className="site-perm-title">Permissions for this site</span>
+              </div>
               <span className="site-perm-badge">pwtk.vercel.app</span>
             </div>
 

@@ -41,9 +41,9 @@ export default async function handler(req, res) {
     headings: { en: title, th: title },
     contents: { en: message, th: message },
     url: url || "https://pwtk.vercel.app",
-    chrome_web_icon: "https://pwtk.vercel.app/favicon.svg",
-    chrome_web_badge: "https://pwtk.vercel.app/favicon.svg",
-    firefox_icon: "https://pwtk.vercel.app/favicon.svg",
+    chrome_web_icon: "https://pwtk.vercel.app/assets/pwtk.png",
+    chrome_web_badge: "https://pwtk.vercel.app/assets/pwtk.png",
+    firefox_icon: "https://pwtk.vercel.app/assets/pwtk.png",
     priority: 10, // ความสำคัญสูงสุด ปลุกจอมือถือทันทีแม้เปิดโหมดประหยัดพลังงาน
     ttl: 259200, // เก็บแจ้งเตือนไว้ 3 วัน หากมือถือปิดเครื่องอยู่ เปิดมาจะได้รับทันที
   };
