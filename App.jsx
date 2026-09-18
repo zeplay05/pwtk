@@ -1869,21 +1869,22 @@ export default function App() {
             </button>
           </div>
 
-          <div style={{ overflowX: "auto" }}>
+          {/* 1. Desktop Admin Table (แสดงเฉพาะบนคอมพิวเตอร์และจอใหญ่) */}
+          <div className="admin-table-desktop">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>หมวดหมู่</th>
-                  <th>หัวข้อข่าว & รายละเอียด</th>
-                  <th>ระดับชั้น</th>
-                  <th style={{ textAlign: "right" }}>การกระทำ</th>
+                  <th style={{ width: "16%" }}>หมวดหมู่</th>
+                  <th style={{ width: "48%" }}>หัวข้อข่าว & รายละเอียด</th>
+                  <th style={{ width: "12%" }}>ระดับชั้น</th>
+                  <th style={{ textAlign: "right", width: "24%" }}>การกระทำ</th>
                 </tr>
               </thead>
               <tbody>
                 {adminPageNews.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <span style={{ fontWeight: "600", color: "#6366f1" }}>{item.category}</span>
+                      <span style={{ fontWeight: "700", color: "#4f46e5" }}>{item.category}</span>
                     </td>
                     <td>
                       <strong
@@ -1893,7 +1894,7 @@ export default function App() {
                       >
                         {item.title} 👁️
                       </strong>
-                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "3px" }}>
                         {item.summary ? item.summary.slice(0, 65) : ""}... • <span style={{ color: "#6366f1", fontWeight: "600" }}>⏱️ {getItemTimeAgo(item)}</span>
                       </div>
                     </td>
@@ -1904,6 +1905,7 @@ export default function App() {
                     </td>
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                       <button
+                        type="button"
                         className="btn btn-secondary"
                         style={{ marginRight: "6px", padding: "4px 10px", fontSize: "0.78rem" }}
                         onClick={() => setReadingArticle(item)}
@@ -1911,6 +1913,7 @@ export default function App() {
                         👁️ ดูข่าว
                       </button>
                       <button
+                        type="button"
                         className="btn btn-secondary"
                         style={{ marginRight: "6px", padding: "4px 10px", fontSize: "0.78rem" }}
                         onClick={() => handleOpenEditModal(item)}
@@ -1918,6 +1921,7 @@ export default function App() {
                         ✏️ แก้ไข
                       </button>
                       <button
+                        type="button"
                         className="btn btn-danger"
                         style={{ padding: "4px 10px", fontSize: "0.78rem" }}
                         onClick={() => handleDeleteNews(item.id)}
@@ -1929,6 +1933,59 @@ export default function App() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* 2. Mobile Admin Cards List (แสดงผลแบบการ์ดสวยงามบนมือถือและแท็บเล็ต ไม่บีบตัวอักษร) */}
+          <div className="admin-cards-mobile">
+            {adminPageNews.map((item) => (
+              <div key={item.id} className="admin-mobile-card">
+                <div className="admin-card-header">
+                  <div className="admin-card-badges">
+                    <span className="admin-badge-cat">{item.category}</span>
+                    <span className="admin-badge-grade">{getGradeShort(item.grade)}</span>
+                  </div>
+                  <span className="admin-card-time">⏱️ {getItemTimeAgo(item)}</span>
+                </div>
+
+                <div
+                  className="admin-card-title"
+                  onClick={() => setReadingArticle(item)}
+                  title="คลิกเพื่ออ่านข่าว"
+                >
+                  {item.title} 👁️
+                </div>
+
+                {item.summary && (
+                  <div className="admin-card-desc">
+                    {item.summary.length > 90 ? item.summary.slice(0, 90) + "..." : item.summary}
+                  </div>
+                )}
+
+                <div className="admin-card-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary admin-action-btn"
+                    onClick={() => setReadingArticle(item)}
+                  >
+                    👁️ ดูข่าว
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary admin-action-btn"
+                    onClick={() => handleOpenEditModal(item)}
+                  >
+                    ✏️ แก้ไข
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger admin-action-btn"
+                    onClick={() => handleDeleteNews(item.id)}
+                  >
+                    🗑️ ลบ
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Pagination Controls for Admin */}
