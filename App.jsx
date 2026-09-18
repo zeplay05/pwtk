@@ -602,13 +602,82 @@ const INITIAL_NEWS = [
     grade: "all",
     tags: ["#วัคซีน", "#สุขภาพ", "#อนามัย"],
     summary: "สาธารณสุขจังหวัดจัดบริการฉีดวัคซีนไข้หวัดใหญ่ฟรีสำหรับนักเรียนทุกคน โปรดส่งใบยินยอมจากผู้ปกครองก่อนวันฉีด",
-    image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80",
-    isHero: false,
+// ฟังก์ชันคำนวณเวลาแบบ Real-time ภาษาไทย (นาที, ชั่วโมง, วัน, สัปดาห์, เดือน, ปี)
+function formatTimeAgo(timestamp, fallback) {
+  if (!timestamp) return fallback || "เมื่อสักครู่";
+
+  let date;
+  if (timestamp instanceof Date) {
+    date = timestamp;
+  } else if (typeof timestamp === "number") {
+    date = new Date(timestamp);
+  } else if (typeof timestamp === "string") {
+    if (/^\d{13}$/.test(timestamp)) {
+      date = new Date(Number(timestamp));
+    } else {
+      date = new Date(timestamp);
+    }
   }
-];
+
+  if (!date || isNaN(date.getTime())) {
+    return fallback || "เมื่อสักครู่";
+  }
+
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffSec < 60) {
+    return "เมื่อสักครู่";
+  }
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) {
+    return `${diffMin} นาทีที่แล้ว`;
+  }
+
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) {
+    return `${diffHour} ชั่วโมงที่แล้ว`;
+  }
+
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) {
+    return `${diffDay} วันที่แล้ว`;
+  }
+
+  const diffWeek = Math.floor(diffDay / 7);
+  if (diffWeek < 4) {
+    return `${diffWeek} สัปดาห์ที่แล้ว`;
+  }
+
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) {
+    return `${diffMonth} เดือนที่แล้ว`;
+  }
+
+  const diffYear = Math.floor(diffDay / 365);
+  return `${diffYear} ปีที่แล้ว`;
+}
 
 export default function App() {
   const [view, setView] = useState("feed"); // 'feed' | 'admin'
+
+  // Real-time ticker อัปเดตเวลาบนหน้าจออัตโนมัติทุก 30 วินาที
+  const [, setTimeTick] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setTimeTick(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // ฟังก์ชันดึงเวลาแสดงผลแบบ Real-time ของแต่ละข่าว
+  const getItemTimeAgo = (item) => {
+    if (!item) return "";
+    const ts = item.createdAt || item.created_at || (item.id && !isNaN(Number(item.id)) && Number(item.id) > 1700000000000 ? Number(item.id) : null);
+    if (ts) {
+      return formatTimeAgo(ts, item.timeAgo);
+    }
+    return item.timeAgo || "เมื่อสักครู่";
+  };
   
   // โหลดข้อมูลจาก LocalStorage (ใช้ version v3 เพื่อให้ดึง 53 ข่าวใหม่ล่าสุดทันที)
   const [newsList, setNewsList] = useState(() => {
@@ -682,7 +751,8 @@ export default function App() {
           grade: item.grade || "all",
           tags: Array.isArray(item.tags) ? item.tags : (typeof item.tags === "string" ? JSON.parse(item.tags || "[]") : []),
           image: item.image,
-          timeAgo: item.time_ago || "ไม่นานมานี้",
+          createdAt: item.created_at || (item.id && !isNaN(Number(item.id)) && Number(item.id) > 1700000000000 ? new Date(Number(item.id)).toISOString() : null),
+          timeAgo: item.time_ago || "เมื่อสักครู่",
           isHero: Boolean(item.is_hero),
         }));
         setNewsList(mapped);
@@ -1173,11 +1243,14 @@ export default function App() {
     } else {
       // เพิ่มข่าวใหม่
       const newItemId = String(Date.now());
+      const nowIso = new Date().toISOString();
       const newItem = {
         id: newItemId,
         title: formTitle.trim(),
         category: formCategory.trim(),
-        timeAgo: "ตอนนี้",
+        createdAt: nowIso,
+        created_at: nowIso,
+        timeAgo: "เมื่อสักครู่",
         grade: formGrade,
         tags: [`#${getGradeShort(formGrade)}`, `#${formCategory.trim()}`],
         summary: formSummary.trim(),
@@ -1204,6 +1277,7 @@ export default function App() {
           tags: newItem.tags,
           image: newItem.image,
           time_ago: newItem.timeAgo,
+          created_at: nowIso,
           is_hero: false,
         }),
       });
@@ -1507,7 +1581,7 @@ export default function App() {
                 <div className="hero-gradient-overlay"></div>
                 <div className="hero-content">
                   <div className="hero-badge-meta">
-                    {heroItem.category} • {getGradeShort(heroItem.grade)} • {heroItem.timeAgo}
+                    {heroItem.category} • {getGradeShort(heroItem.grade)} • {getItemTimeAgo(heroItem)}
                   </div>
                   <h2 className="hero-title-text">{heroItem.title}</h2>
                   <p className="hero-desc-text">{heroItem.summary}</p>
@@ -1535,7 +1609,7 @@ export default function App() {
                       <img src={item.image} alt={item.title} />
                     </div>
                     <div className="meta-row">
-                      <strong>{item.category}</strong> • {getGradeShort(item.grade)} • {item.timeAgo}
+                      <strong>{item.category}</strong> • {getGradeShort(item.grade)} • {getItemTimeAgo(item)}
                     </div>
                     <h3 className="middle-card-title">{item.title}</h3>
                     <div className="tag-list">
@@ -1574,7 +1648,7 @@ export default function App() {
                             {item.category} • {getGradeShort(item.grade)}
                           </div>
                           <h4 className="compact-text-title">{item.title}</h4>
-                          <span style={{ fontSize: "0.72rem", color: "var(--text-light)" }}>{item.timeAgo}</span>
+                          <span style={{ fontSize: "0.72rem", color: "var(--text-light)" }}>{getItemTimeAgo(item)}</span>
                         </div>
                         <img src={item.image} alt="" className="compact-thumb" />
                       </div>
@@ -1875,7 +1949,7 @@ export default function App() {
                   🎯 {getGradeLabel(readingArticle.grade)}
                 </span>
                 <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                  ⏱️ {readingArticle.timeAgo}
+                  ⏱️ {getItemTimeAgo(readingArticle)}
                 </span>
               </div>
 
