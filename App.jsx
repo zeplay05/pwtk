@@ -1920,6 +1920,22 @@ export default function App() {
         </div>
       )}
 
+      {/* Site Footer (ส่วนท้ายเว็บไซต์) */}
+      <footer className="site-footer">
+        <div className="site-footer-content">
+          <div className="footer-brand">
+            <img src="/assets/pwtk.png" alt="โลโก้โรงเรียนปายวิทยาคาร" className="footer-logo" />
+            <span className="footer-title">โรงเรียนปายวิทยาคาร</span>
+          </div>
+          <div className="footer-credit">
+            ⚡ Power By Natthanicha Yana
+          </div>
+          <div className="footer-copyright">
+            © {new Date().getFullYear()} โรงเรียนปายวิทยาคาร • ระบบเว็บข่าวสารและแจ้งเตือนด่วน
+          </div>
+        </div>
+      </footer>
+
       {/* =========================================================
           MODALS
           ========================================================= */}
