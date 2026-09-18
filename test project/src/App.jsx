@@ -941,78 +941,70 @@ export default function App() {
     }
   };
 
-  // ดำเนินการกด Allow บนหน้าต่างสีดำ (คลิกเดียวจบ ส่งคำขอเปิดสิทธิ์อย่างถูกต้อง ไม่ race condition)
+  // ดำเนินการกด Allow บนหน้าต่างสีดำ — เรียกขอสิทธิ์ผ่านเบราว์เซอร์ทันทีใน User Click Gesture เพื่อให้ Prompt เด้งทันที 100%
   const handleExecuteAllow = async () => {
     setShowBrowserPermissionModal(false);
 
-    // ตรวจสอบเบื้องต้น หากผู้ใช้เคย Block ในเบราว์เซอร์ไว้
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied") {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      addToast("⚠️ ไม่รองรับการแจ้งเตือน", "เบราว์เซอร์นี้ไม่รองรับระบบ Web Push");
+      return;
+    }
+
+    // กรณีเคยกดบล็อกในเบราว์เซอร์มาก่อน
+    if (Notification.permission === "denied") {
       addToast(
         "⚠️ เบราว์เซอร์กำลังบล็อกการแจ้งเตือน",
-        "กรุณาคลิกไอคอนแม่กุญแจ 🔒 ข้างชื่อเว็บด้านบนสุด แล้วเปลี่ยน Notifications เป็น 'อนุญาต (Allow)'"
+        "กรุณาคลิกไอคอนแม่กุญแจ 🔒 หรือ 🎛️ ข้างชื่อเว็บด้านบนสุด แล้วเปลี่ยน Notifications เป็น 'อนุญาต (Allow)'"
       );
       return;
     }
 
     try {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function (OneSignal) {
+      // เรียกขอสิทธิ์จากเบราว์เซอร์โดยตรงในจังหวะคลิก (รักษาสิทธิ์ User Gesture เพื่อให้เบราว์เซอร์เด้ง Popup ทันที)
+      let permissionResult = Notification.permission;
+      if (permissionResult === "default") {
         try {
-          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-            console.log("🔔 [OneSignal] Native permission is already granted, opting in directly...");
-            if (OneSignal.User?.PushSubscription?.optIn) {
-              await OneSignal.User.PushSubscription.optIn();
-              console.log("🔔 [OneSignal] Subscribed ID:", OneSignal.User?.PushSubscription?.id);
-            }
-            setIsPushEnabled(true);
-            addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
-            const grade = localStorage.getItem("user_subscribed_grade") || "all";
-            await OneSignal.User.addTag("level", grade);
-            return;
-          }
-
-          console.log("🔔 [OneSignal] handleExecuteAllow: requesting permission...");
-          await OneSignal.Notifications.requestPermission();
-          
-          const isGranted = Boolean(OneSignal.Notifications.permission) || (typeof window !== "undefined" && Notification.permission === "granted");
-          console.log("🔔 [OneSignal] Permission granted:", isGranted);
-
-          if (isGranted) {
-            setIsPushEnabled(true);
-            addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
-
-            try {
-              if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
-                await OneSignal.User.PushSubscription.optIn();
-                console.log("🔔 [OneSignal] Subscribed ID:", OneSignal.User?.PushSubscription?.id);
-              }
-            } catch (optErr) {
-              console.warn("optIn error:", optErr);
-            }
-
-            const grade = localStorage.getItem("user_subscribed_grade") || "all";
-            await OneSignal.User.addTag("level", grade);
-          } else {
-            console.log("🔔 [OneSignal] User dismissed or blocked notification permission");
-            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied") {
-              addToast(
-                "⚠️ การแจ้งเตือนถูกบล็อกอยู่",
-                "คลิกรูปแม่กุญแจ 🔒 ข้าง URL ด้านบน แล้วปรับเป็น Allow เพื่อรับการแจ้งเตือน"
-              );
-            }
-          }
-        } catch (err) {
-          console.warn("handleExecuteAllow error:", err);
-          if (String(err).toLowerCase().includes("block") || (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied")) {
-            addToast(
-              "⚠️ เบราว์เซอร์บล็อกสิทธิ์แจ้งเตือน",
-              "คลิกไอคอนแม่กุญแจ 🔒 ด้านบนสุดข้างชื่อเว็บ แล้วเลือก 'อนุญาต (Allow)' จากนั้นรีเฟรชหน้าเว็บ"
-            );
-          }
+          permissionResult = await Notification.requestPermission();
+        } catch (e) {
+          permissionResult = await new Promise((resolve) => Notification.requestPermission(resolve));
         }
-      });
-    } catch (e) {
-      console.warn("handleExecuteAllow error:", e);
+      }
+
+      console.log("🔔 [Notification.requestPermission Result]:", permissionResult);
+
+      if (permissionResult === "granted") {
+        setIsPushEnabled(true);
+        addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนบนเบราว์เซอร์แล้ว");
+
+        // Sync ข้อมูลและลงทะเบียนอุปกรณ์กับ OneSignal ทันที
+        const syncOneSignal = async (OS) => {
+          try {
+            if (OS.User?.PushSubscription?.optIn) {
+              await OS.User.PushSubscription.optIn();
+              console.log("🔔 [OneSignal] Subscribed ID:", OS.User?.PushSubscription?.id);
+            }
+            const grade = localStorage.getItem("user_subscribed_grade") || "all";
+            await OS.User.addTag("level", grade);
+          } catch (err) {
+            console.warn("OneSignal optIn sync error:", err);
+          }
+        };
+
+        if (window.OneSignal && window.OneSignal.User) {
+          await syncOneSignal(window.OneSignal);
+        } else {
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred.push(syncOneSignal);
+        }
+      } else if (permissionResult === "denied") {
+        setIsPushEnabled(false);
+        addToast(
+          "⚠️ สิทธิ์ถูกปฏิเสธ",
+          "คุณกดปฏิเสธ หากต้องการเปิดรับข่าวสารสามารถกดเปิดได้ที่ไอคอนแม่กุญแจ 🔒 ด้านบน"
+        );
+      }
+    } catch (err) {
+      console.warn("handleExecuteAllow error:", err);
     }
   };
 
@@ -2218,7 +2210,13 @@ export default function App() {
               <div className="site-perm-info">
                 <div className="site-perm-info-title">Notifications</div>
                 <div className="site-perm-info-desc">
-                  ขออนุญาตส่งการแจ้งเตือนข่าวสาร กิจกรรม และประกาศด่วนจากโรงเรียนปายวิทยาคาร
+                  {typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied" ? (
+                    <span style={{ color: "#f87171" }}>
+                      ⚠️ เบราว์เซอร์ของคุณกำลังบล็อกการแจ้งเตือนไว้: ให้คลิกที่ไอคอน 🔒 หรือ 🎛️ ข้างช่องใส่ชื่อเว็บด้านบนสุด แล้วเปลี่ยนเป็น "อนุญาต (Allow)"
+                    </span>
+                  ) : (
+                    "ขออนุญาตส่งการแจ้งเตือนข่าวสาร กิจกรรม และประกาศด่วนจากโรงเรียนปายวิทยาคาร"
+                  )}
                 </div>
               </div>
             </div>

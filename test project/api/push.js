@@ -34,12 +34,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ errors: ["title and message are required"] });
   }
 
-  // สร้าง payload พื้นฐาน
+  // สร้าง payload พื้นฐาน รองรับทั้งมือถือ (Android/iOS) และคอมพิวเตอร์ (Windows/Mac)
   const payload = {
     app_id: APP_ID,
     headings: { en: title, th: title },
     contents: { en: message, th: message },
-    url: url || undefined,
+    url: url || "https://pwtk.vercel.app",
+    chrome_web_icon: "https://pwtk.vercel.app/favicon.svg",
+    chrome_web_badge: "https://pwtk.vercel.app/favicon.svg",
+    firefox_icon: "https://pwtk.vercel.app/favicon.svg",
   };
 
   if (!grade || grade === "all") {
