@@ -607,7 +607,7 @@ const INITIAL_NEWS = [
   }
 ];
 
-// ฟังก์ชันคำนวณเวลาแบบ Real-time ภาษาไทย (นาที, ชั่วโมง, วัน, สัปดาห์, เดือน, ปี)
+// ฟังก์ชันคำนวณเวลาแบบ Real-time ภาษาไทย (นาที, ชั่วโมง, วัน, เดือน, ปี)
 function formatTimeAgo(timestamp, fallback) {
   if (!timestamp) return fallback || "เมื่อสักครู่";
 
@@ -646,13 +646,8 @@ function formatTimeAgo(timestamp, fallback) {
   }
 
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) {
+  if (diffDay < 30) {
     return `${diffDay} วันที่แล้ว`;
-  }
-
-  const diffWeek = Math.floor(diffDay / 7);
-  if (diffWeek < 4) {
-    return `${diffWeek} สัปดาห์ที่แล้ว`;
   }
 
   const diffMonth = Math.floor(diffDay / 30);
@@ -660,17 +655,17 @@ function formatTimeAgo(timestamp, fallback) {
     return `${diffMonth} เดือนที่แล้ว`;
   }
 
-  const diffYear = Math.floor(diffDay / 365);
+  const diffYear = Math.max(1, Math.floor(diffDay / 365));
   return `${diffYear} ปีที่แล้ว`;
 }
 
 export default function App() {
   const [view, setView] = useState("feed"); // 'feed' | 'admin'
 
-  // Real-time ticker อัปเดตเวลาบนหน้าจออัตโนมัติทุก 30 วินาที
+  // Real-time ticker อัปเดตเวลาบนหน้าจออัตโนมัติทุก 15 วินาที
   const [, setTimeTick] = useState(Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setTimeTick(Date.now()), 30000);
+    const timer = setInterval(() => setTimeTick(Date.now()), 15000);
     return () => clearInterval(timer);
   }, []);
 
@@ -1845,7 +1840,7 @@ export default function App() {
                         {item.title} 👁️
                       </strong>
                       <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                        {item.summary ? item.summary.slice(0, 65) : ""}...
+                        {item.summary ? item.summary.slice(0, 65) : ""}... • <span style={{ color: "#6366f1", fontWeight: "600" }}>⏱️ {getItemTimeAgo(item)}</span>
                       </div>
                     </td>
                     <td>

@@ -35,6 +35,7 @@ export default async function handler(req, res) {
   }
 
   // สร้าง payload พื้นฐาน รองรับทั้งมือถือ (Android/iOS) และคอมพิวเตอร์ (Windows/Mac)
+  // คืนค่าระบบเดิมสมบูรณ์แบบตอน 5:40 PM
   const payload = {
     app_id: APP_ID,
     headings: { en: title, th: title },
@@ -43,15 +44,19 @@ export default async function handler(req, res) {
     chrome_web_icon: "https://pwtk.vercel.app/favicon.svg",
     chrome_web_badge: "https://pwtk.vercel.app/favicon.svg",
     firefox_icon: "https://pwtk.vercel.app/favicon.svg",
+    priority: 10, // ความสำคัญสูงสุด ปลุกจอมือถือทันทีแม้เปิดโหมดประหยัดพลังงาน
+    ttl: 259200, // เก็บแจ้งเตือนไว้ 3 วัน หากมือถือปิดเครื่องอยู่ เปิดมาจะได้รับทันที
   };
 
   if (!grade || grade === "all") {
-    payload.included_segments = ["Subscribed Users"];
+    payload.included_segments = ["Subscribed Users", "Total Subscriptions", "All"];
   } else {
     payload.filters = [
       { field: "tag", key: "level", relation: "=", value: grade },
       { operator: "OR" },
       { field: "tag", key: "level", relation: "=", value: "all" },
+      { operator: "OR" },
+      { field: "tag", key: "level", relation: "!exists" }, // รวมเครื่องที่เพิ่งกด Allow ใหม่ๆ ที่ยังไม่มีแท็ก
     ];
   }
 
@@ -67,12 +72,12 @@ export default async function handler(req, res) {
 
     let data = await response.json();
 
-    // Fallback: ถ้ากลุ่มระดับชั้นยังไม่มีคน subscribe ให้ส่งหากลุ่ม Subscribed Users ทั้งหมดอัตโนมัติ
-    if (!response.ok && data && data.errors) {
+    // Fallback: ถ้าส่งแบบ filters ระดับชั้นแล้วไม่มีคน subscribe ให้สลับส่งไปยัง Subscribed Users ทุกคนอัตโนมัติ
+    if ((!response.ok || (data && data.errors)) && data && data.errors) {
       const errStr = JSON.stringify(data.errors);
       if (errStr.includes("All included players are not subscribed") && payload.filters) {
         delete payload.filters;
-        payload.included_segments = ["Subscribed Users"];
+        payload.included_segments = ["Subscribed Users", "Total Subscriptions", "All"];
         response = await fetch("https://api.onesignal.com/notifications", {
           method: "POST",
           headers: {
