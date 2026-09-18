@@ -669,6 +669,34 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // จัดการการเลื่อนซ้าย-ขวาของแถบเมนูระดับชั้น (Category Pills) สำหรับคอมและมือถือ
+  const pillsRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkPillsScroll = () => {
+    if (pillsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = pillsRef.current;
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkPillsScroll();
+    const handleResize = () => checkPillsScroll();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const scrollPills = (direction) => {
+    if (pillsRef.current) {
+      const offset = direction === "left" ? -240 : 240;
+      pillsRef.current.scrollBy({ left: offset, behavior: "smooth" });
+      setTimeout(checkPillsScroll, 350);
+    }
+  };
+
   // ฟังก์ชันดึงเวลาแสดงผลแบบ Real-time ของแต่ละข่าว
   const getItemTimeAgo = (item) => {
     if (!item) return "";
@@ -1545,9 +1573,28 @@ export default function App() {
             </div>
           )}
 
-          {/* Category Filter Pills */}
-          <div className="category-filter-row">
-            <div className="pills-group">
+          {/* Category Filter Pills (พร้อมปุ่มเลื่อนซ้าย-ขวา และ Scrollbar สำหรับมือถือและคอม) */}
+          <div className="category-filter-wrapper">
+            <button
+              type="button"
+              className={`pills-scroll-btn pills-scroll-left ${canScrollLeft ? "visible" : ""}`}
+              onClick={() => scrollPills("left")}
+              aria-label="เลื่อนแท็บไปทางซ้าย"
+              title="เลื่อนซ้าย"
+            >
+              ◀
+            </button>
+
+            <div
+              className="pills-group"
+              ref={pillsRef}
+              onScroll={checkPillsScroll}
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && pillsRef.current) {
+                  pillsRef.current.scrollLeft += e.deltaY;
+                }
+              }}
+            >
               {GRADE_OPTIONS.map((grade) => (
                 <button
                   key={grade.value}
@@ -1562,6 +1609,16 @@ export default function App() {
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              className={`pills-scroll-btn pills-scroll-right ${canScrollRight ? "visible" : ""}`}
+              onClick={() => scrollPills("right")}
+              aria-label="เลื่อนแท็บไปทางขวา"
+              title="เลื่อนขวา"
+            >
+              ▶
+            </button>
           </div>
 
           {/* 3-Column Magazine Grid */}
