@@ -1349,20 +1349,25 @@ export default function App() {
 
   // OneSignal REST Push (ส่งผ่าน Serverless API /api/push โดย Server มี Key รับรอง 100%)
   const sendPush = async (title, message, grade) => {
-    // 1. Local notification สำหรับคนที่เปิดเว็บอยู่ (เหมือนเดิม)
+    // 1. Local notification สำหรับคนที่เปิดเว็บอยู่ (แสดงเฉพาะถ้าเลือกระดับชั้นตรงกัน หรือเลือก All)
     try {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`📢 ${title}`, { body: message, icon: "/assets/pwtk.png" });
-      }
-      if ("serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
-        navigator.serviceWorker.ready.then((reg) => {
-          reg.showNotification(`📢 ${title}`, {
-            body: message,
-            icon: "/assets/pwtk.png",
-            badge: "/assets/pwtk.png",
-            vibrate: [200, 100, 200],
-          });
-        }).catch(() => {});
+      const currentSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
+      const shouldShowLocal = !grade || grade === "all" || currentSubGrade === "all" || currentSubGrade === grade;
+
+      if (shouldShowLocal) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(`📢 ${title}`, { body: message, icon: "/assets/pwtk.png" });
+        }
+        if ("serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(`📢 ${title}`, {
+              body: message,
+              icon: "/assets/pwtk.png",
+              badge: "/assets/pwtk.png",
+              vibrate: [200, 100, 200],
+            });
+          }).catch(() => {});
+        }
       }
     } catch (err) {
       console.warn(err);
@@ -1729,7 +1734,13 @@ export default function App() {
                   <select
                     className="select-pill"
                     value={userGrade}
-                    onChange={(e) => setUserGrade(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserGrade(val);
+                      if (val) {
+                        requestNotificationSubscription(val);
+                      }
+                    }}
                   >
                     <option value="">-- เลือกระดับชั้นของคุณ --</option>
                     {GRADE_OPTIONS.map((g) => (

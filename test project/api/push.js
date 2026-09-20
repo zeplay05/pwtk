@@ -51,12 +51,11 @@ export default async function handler(req, res) {
   if (!grade || grade === "all") {
     payload.included_segments = ["Subscribed Users", "Total Subscriptions", "All"];
   } else {
+    // กรองเฉพาะเครื่องที่เลือกระดับชั้นนี้ตรงกัน หรือเครื่องที่เลือกรับทุกระดับชั้น (all)
     payload.filters = [
       { field: "tag", key: "level", relation: "=", value: grade },
       { operator: "OR" },
       { field: "tag", key: "level", relation: "=", value: "all" },
-      { operator: "OR" },
-      { field: "tag", key: "level", relation: "!exists" }, // รวมเครื่องที่เพิ่งกด Allow ใหม่ๆ ที่ยังไม่มีแท็ก
     ];
   }
 
@@ -72,22 +71,22 @@ export default async function handler(req, res) {
 
     let data = await response.json();
 
-    // Fallback: ถ้าส่งแบบ filters ระดับชั้นแล้วไม่มีคน subscribe ให้สลับส่งไปยัง Subscribed Users ทุกคนอัตโนมัติ
-    if ((!response.ok || (data && data.errors)) && data && data.errors) {
-      const errStr = JSON.stringify(data.errors);
-      if (errStr.includes("All included players are not subscribed") && payload.filters) {
-        delete payload.filters;
-        payload.included_segments = ["Subscribed Users", "Total Subscriptions", "All"];
-        response = await fetch("https://api.onesignal.com/notifications", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            Authorization: `Key ${API_KEY}`,
-          },
-          body: JSON.stringify(payload),
+    if (!response.ok || data.errors) {
+      const errStr = JSON.stringify(data.errors || "");
+      // ถ้าไม่มีผู้ใช้ที่ subscribe ในระดับชั้นนี้ ให้คืนค่าสำเร็จโดยมีผู้รับ 0 คน (ห้ามส่งกระจายไปยังกลุ่มอื่น)
+      if (errStr.includes("All included players are not subscribed")) {
+        return res.status(200).json({
+          success: true,
+          id: data?.id || null,
+          recipients: 0,
+          message: "ไม่มีผู้รับที่ลงทะเบียนในระดับชั้นนี้",
         });
-        data = await response.json();
       }
+      console.error("OneSignal API error:", data);
+      return res.status(response.status || 500).json({
+        errors: data.errors || ["Unknown OneSignal API error"],
+        raw: data,
+      });
     }
 
     if (!response.ok || data.errors) {

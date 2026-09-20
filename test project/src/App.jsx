@@ -706,7 +706,7 @@ export default function App() {
     }
     return item.timeAgo || "เมื่อสักครู่";
   };
-  
+
   // โหลดข้อมูลจาก LocalStorage (ใช้ version v3 เพื่อให้ดึง 53 ข่าวใหม่ล่าสุดทันที)
   const [newsList, setNewsList] = useState(() => {
     try {
@@ -723,12 +723,12 @@ export default function App() {
 
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Pagination State (สูงสุด 10 ข่าวต่อหน้า)
   const [currentPage, setCurrentPage] = useState(1);
   const [adminPage, setAdminPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
-  
+
   // Reading Article Modal State (สำหรับกดอ่านข่าว)
   const [readingArticle, setReadingArticle] = useState(null);
 
@@ -739,7 +739,7 @@ export default function App() {
   const [subSuccess, setSubSuccess] = useState(false);
 
 
-  
+
   // Supabase Cloud Database Configuration (ซิงค์ข่าวสารทุกเครื่องแบบ Realtime)
   const SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || "https://uabmrftmulbminoeivqj.supabase.co";
   const SUPABASE_ANON_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhYm1yZnRtdWxibWlub2VpdnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTU0MTUsImV4cCI6MjEwNTEzMTQxNX0.42rQXi_g1wxLmhdPPOdgqDCgDQn3KWgdxexSqusdzjU";
@@ -895,7 +895,7 @@ export default function App() {
             if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
               await OneSignal.User.PushSubscription.optIn();
             }
-          } catch (optErr) {}
+          } catch (optErr) { }
           if (gradeVal) {
             await OneSignal.User.addTag("level", gradeVal);
           }
@@ -967,7 +967,7 @@ export default function App() {
                 if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
                   await OneSignal.User.PushSubscription.optIn();
                 }
-              } catch (e) {}
+              } catch (e) { }
               const grade = localStorage.getItem("user_subscribed_grade") || "all";
               await OneSignal.User.addTag("level", grade);
               addToast("🎉 อนุญาตเรียบร้อย!", "เปิดรับการแจ้งเตือนของโรงเรียนเรียบร้อยแล้ว");
@@ -985,7 +985,7 @@ export default function App() {
                 }
               });
             }
-          } catch (e) {}
+          } catch (e) { }
         } catch (e) {
           console.warn("OneSignal Init Warning:", e);
         }
@@ -1010,7 +1010,7 @@ export default function App() {
           }
           const userSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
           await OneSignal.User.addTag("level", userSubGrade);
-        } catch (e) {}
+        } catch (e) { }
       });
     } else {
       setShowBrowserPermissionModal(true);
@@ -1266,7 +1266,7 @@ export default function App() {
         method: "PATCH",
         body: JSON.stringify(updatedItemData),
       });
-      
+
       addToast("💾 บันทึกการแก้ไขสำเร็จ!", `เปลี่ยนระดับชั้นเป็น "${getGradeLabel(formGrade)}" เรียบร้อย`);
     } else {
       // เพิ่มข่าวใหม่
@@ -1349,20 +1349,25 @@ export default function App() {
 
   // OneSignal REST Push (ส่งผ่าน Serverless API /api/push โดย Server มี Key รับรอง 100%)
   const sendPush = async (title, message, grade) => {
-    // 1. Local notification สำหรับคนที่เปิดเว็บอยู่ (เหมือนเดิม)
+    // 1. Local notification สำหรับคนที่เปิดเว็บอยู่ (แสดงเฉพาะถ้าเลือกระดับชั้นตรงกัน หรือเลือก All)
     try {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`📢 ${title}`, { body: message, icon: "/assets/pwtk.png" });
-      }
-      if ("serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
-        navigator.serviceWorker.ready.then((reg) => {
-          reg.showNotification(`📢 ${title}`, {
-            body: message,
-            icon: "/assets/pwtk.png",
-            badge: "/assets/pwtk.png",
-            vibrate: [200, 100, 200],
-          });
-        }).catch(() => {});
+      const currentSubGrade = localStorage.getItem("user_subscribed_grade") || "all";
+      const shouldShowLocal = !grade || grade === "all" || currentSubGrade === "all" || currentSubGrade === grade;
+
+      if (shouldShowLocal) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(`📢 ${title}`, { body: message, icon: "/assets/pwtk.png" });
+        }
+        if ("serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(`📢 ${title}`, {
+              body: message,
+              icon: "/assets/pwtk.png",
+              badge: "/assets/pwtk.png",
+              vibrate: [200, 100, 200],
+            });
+          }).catch(() => { });
+        }
       }
     } catch (err) {
       console.warn(err);
@@ -1429,7 +1434,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      
+
       {/* Top Header Bar */}
       <header className="top-nav">
         <div className="nav-left-pills">
@@ -1525,7 +1530,7 @@ export default function App() {
         <div>
           {/* Breadcrumb & Headline */}
           <div className="breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            
+
             <span>โรงเรียนปายวิทยาคาร</span> <span>/</span> ข่าวประชาสัมพันธ์ & กิจกรรม
           </div>
 
@@ -1568,7 +1573,7 @@ export default function App() {
                 }}
                 onClick={handleEnablePushClick}
               >
-              กดเปิด Allow แจ้งเตือน
+                กดเปิด Allow แจ้งเตือน
               </button>
             </div>
           )}
@@ -1623,7 +1628,7 @@ export default function App() {
 
           {/* 3-Column Magazine Grid */}
           <main className="magazine-grid">
-            
+
             {/* Column 1: Big Hero Card */}
             {heroItem ? (
               <article
@@ -1680,7 +1685,7 @@ export default function App() {
 
             {/* Column 3: Compact News List & Push Widget */}
             <aside className="column-right">
-              
+
               <div>
                 <div className="section-label-bar">
                   <span className="accent-bar"></span>
@@ -1729,7 +1734,13 @@ export default function App() {
                   <select
                     className="select-pill"
                     value={userGrade}
-                    onChange={(e) => setUserGrade(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserGrade(val);
+                      if (val) {
+                        requestNotificationSubscription(val);
+                      }
+                    }}
                   >
                     <option value="">-- เลือกระดับชั้นของคุณ --</option>
                     {GRADE_OPTIONS.map((g) => (
@@ -1739,7 +1750,7 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-
+                
                 <button
                   type="button"
                   className={`btn btn-full ${subSuccess ? "btn-primary" : "btn-dark"}`}
@@ -1860,7 +1871,7 @@ export default function App() {
                 เพิ่ม แก้ไข ลบข่าว และบันทึกข้อมูลข่าวสารลงระบบ พร้อมยิง OneSignal Web Push
               </p>
             </div>
-            
+
             <button
               className="btn btn-dark"
               onClick={handleOpenAddModal}
@@ -2037,7 +2048,7 @@ export default function App() {
             <span className="footer-title">โรงเรียนปายวิทยาคาร</span>
           </div>
           <div className="footer-credit">
-          Power By Natthanicha Yana
+            Power By Natthanicha Yana
           </div>
           <div className="footer-copyright">
             © {new Date().getFullYear()} โรงเรียนปายวิทยาคาร • ระบบเว็บข่าวสารและแจ้งเตือนด่วน
@@ -2053,7 +2064,7 @@ export default function App() {
       {readingArticle && (
         <div className="modal-overlay" onClick={() => setReadingArticle(null)}>
           <div className="article-modal-card" onClick={(e) => e.stopPropagation()}>
-            
+
             {/* Header Cover Image */}
             <div className="article-modal-header">
               <img src={readingArticle.image} alt={readingArticle.title} />
@@ -2206,7 +2217,7 @@ export default function App() {
                 <label style={{ fontSize: "0.82rem", fontWeight: "600", display: "block", marginBottom: "6px" }}>
                   🖼️ รูปภาพประกอบข่าว (เลือกรูปจากเครื่อง):
                 </label>
-                
+
                 <input
                   type="file"
                   id="local-img-input"

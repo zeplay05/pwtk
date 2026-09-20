@@ -49,6 +49,14 @@ export default defineConfig({
                   body: JSON.stringify(payload),
                 })
                 const data = await r.json()
+                if (data && data.errors) {
+                  const errStr = JSON.stringify(data.errors)
+                  if (errStr.includes('All included players are not subscribed')) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' })
+                    res.end(JSON.stringify({ success: true, recipients: 0, message: 'ไม่มีผู้ใช้งานที่ลงทะเบียนรับข่าวสารในระดับชั้นนี้' }))
+                    return
+                  }
+                }
                 res.writeHead(r.status, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify(data))
               } catch (err) {
