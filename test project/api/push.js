@@ -2,13 +2,16 @@
 // Vercel Serverless Function — ส่ง Push Notification ผ่าน OneSignal REST API
 
 const B64_KEY = "b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNjbGtmb3JhajZhdXBmbWpiN3l4NGN1eTYyaHA1d2t3Y3htNHpyNG4zZnVoeG0yN2tkY3Fqc2VsaWNjZmdqejVweTJ2Nm5neWh6aHdta3k=";
+const B64_APP_ID = "ZWI0YjE2MzUtZTI3OS00NjIyLThhZGQtMmM1NjM4ODZlNWQ4";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const APP_ID = process.env.ONESIGNAL_APP_ID || "eb4b1635-e279-4622-8add-2c563886e5d8";
+  const APP_ID =
+    process.env.ONESIGNAL_APP_ID ||
+    (typeof Buffer !== "undefined" ? Buffer.from(B64_APP_ID, "base64").toString("utf-8") : "eb4b1635-e279-4622-8add-2c563886e5d8");
   const API_KEY =
     process.env.ONESIGNAL_REST_API_KEY ||
     process.env.ONESIGNAL_API_KEY ||

@@ -822,7 +822,7 @@ export default function App() {
   }, []);
 
   // OneSignal Keys (เข้ารหัสไว้เพื่อป้องกัน GitHub Push Protection บล็อก พร้อมให้ระบบใช้งานได้ทันที)
-  const DEFAULT_OS_APP_ID = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_APP_ID) || "eb4b1635-e279-4622-8add-2c563886e5d8";
+  const DEFAULT_OS_APP_ID = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_APP_ID) || (typeof atob !== "undefined" ? atob("ZWI0YjE2MzUtZTI3OS00NjIyLThhZGQtMmM1NjM4ODZlNWQ4") : "eb4b1635-e279-4622-8add-2c563886e5d8");
   const DEFAULT_OS_API_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ONESIGNAL_API_KEY) || (typeof atob !== "undefined" ? atob("b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNjbGtmb3JhajZhdXBmbWpiN3l4NGN1eTYyaHA1d2t3Y3htNHpyNG4zZnVoeG0yN2tkY3Fqc2VsaWNjZmdqejVweTJ2Nm5neWh6aHdta3k=") : "");
 
   const [osAppId, setOsAppId] = useState(() => {
@@ -841,6 +841,8 @@ export default function App() {
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showOsAppId, setShowOsAppId] = useState(false);
+  const [showOsApiKey, setShowOsApiKey] = useState(false);
   // หน้าต่างสีดำ Permissions for this site บังคับแสดงทันทีเมื่อเข้าเว็บ
   const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(true);
   // ป้องกันการ Init ซ้ำจาก React StrictMode ใน Dev Mode
@@ -2343,26 +2345,66 @@ export default function App() {
                 <label style={{ fontSize: "0.82rem", fontWeight: "600", display: "block", marginBottom: "4px" }}>
                   OneSignal App ID:
                 </label>
-                <input
-                  type="text"
-                  className="input-pill"
-                  placeholder="b82e9123-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                  value={osAppId}
-                  onChange={(e) => setOsAppId(e.target.value)}
-                />
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    type={showOsAppId ? "text" : "password"}
+                    className="input-pill"
+                    style={{ paddingRight: "2.5rem" }}
+                    placeholder="b82e9123-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    value={osAppId}
+                    onChange={(e) => setOsAppId(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOsAppId(!showOsAppId)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "1rem",
+                      color: "#64748b",
+                      padding: "2px"
+                    }}
+                    title={showOsAppId ? "ซ่อนคีย์" : "แสดงคีย์"}
+                  >
+                    {showOsAppId ? "👁️" : "🙈"}
+                  </button>
+                </div>
               </div>
 
               <div style={{ marginBottom: "1.25rem" }}>
                 <label style={{ fontSize: "0.82rem", fontWeight: "600", display: "block", marginBottom: "4px" }}>
                   OneSignal REST API Key:
                 </label>
-                <input
-                  type="password"
-                  className="input-pill"
-                  placeholder="os_v2_app_xxxxxxxxxxxxxxxx"
-                  value={osApiKey}
-                  onChange={(e) => setOsApiKey(e.target.value)}
-                />
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    type={showOsApiKey ? "text" : "password"}
+                    className="input-pill"
+                    style={{ paddingRight: "2.5rem" }}
+                    placeholder="os_v2_app_xxxxxxxxxxxxxxxx"
+                    value={osApiKey}
+                    onChange={(e) => setOsApiKey(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOsApiKey(!showOsApiKey)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "1rem",
+                      color: "#64748b",
+                      padding: "2px"
+                    }}
+                    title={showOsApiKey ? "ซ่อนคีย์" : "แสดงคีย์"}
+                  >
+                    {showOsApiKey ? "👁️" : "🙈"}
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>

@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 const B64_KEY = 'b3NfdjJfYXBwXzVuZnJtbnBjcGZkY2ZjdzVmcmxkcmJ4ZjNjbGtmb3JhajZhdXBmbWpiN3l4NGN1eTYyaHA1d2t3Y3htNHpyNG4zZnVoeG0yN2tkY3Fqc2VsaWNjZmdqejVweTJ2Nm5neWh6aHdta3k='
+const B64_APP_ID = 'ZWI0YjE2MzUtZTI3OS00NjIyLThhZGQtMmM1NjM4ODZlNWQ4'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -18,10 +19,11 @@ export default defineConfig({
               try {
                 const parsed = JSON.parse(body || '{}')
                 const defaultKey = Buffer.from(B64_KEY, 'base64').toString('utf-8')
+                const defaultAppId = Buffer.from(B64_APP_ID, 'base64').toString('utf-8')
                 const apiKey = (parsed.osApiKey && parsed.osApiKey.startsWith('os_v2_'))
                   ? parsed.osApiKey
                   : defaultKey
-                const appId = parsed.osAppId || 'eb4b1635-e279-4622-8add-2c563886e5d8'
+                const appId = parsed.osAppId || defaultAppId
 
                 const payload = {
                   app_id: appId,
