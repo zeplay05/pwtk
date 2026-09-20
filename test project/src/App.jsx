@@ -841,8 +841,6 @@ export default function App() {
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showOsAppId, setShowOsAppId] = useState(false);
-  const [showOsApiKey, setShowOsApiKey] = useState(false);
   // หน้าต่างสีดำ Permissions for this site บังคับแสดงทันทีเมื่อเข้าเว็บ
   const [showBrowserPermissionModal, setShowBrowserPermissionModal] = useState(true);
   // ป้องกันการ Init ซ้ำจาก React StrictMode ใน Dev Mode
@@ -2345,66 +2343,26 @@ export default function App() {
                 <label style={{ fontSize: "0.82rem", fontWeight: "600", display: "block", marginBottom: "4px" }}>
                   OneSignal App ID:
                 </label>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <input
-                    type={showOsAppId ? "text" : "password"}
-                    className="input-pill"
-                    style={{ paddingRight: "2.5rem" }}
-                    placeholder="b82e9123-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    value={osAppId}
-                    onChange={(e) => setOsAppId(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowOsAppId(!showOsAppId)}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "1rem",
-                      color: "#64748b",
-                      padding: "2px"
-                    }}
-                    title={showOsAppId ? "ซ่อนคีย์" : "แสดงคีย์"}
-                  >
-                    {showOsAppId ? "👁️" : "🙈"}
-                  </button>
-                </div>
+                <input
+                  type="password"
+                  className="input-pill"
+                  placeholder="b82e9123-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={osAppId}
+                  onChange={(e) => setOsAppId(e.target.value)}
+                />
               </div>
 
               <div style={{ marginBottom: "1.25rem" }}>
                 <label style={{ fontSize: "0.82rem", fontWeight: "600", display: "block", marginBottom: "4px" }}>
                   OneSignal REST API Key:
                 </label>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <input
-                    type={showOsApiKey ? "text" : "password"}
-                    className="input-pill"
-                    style={{ paddingRight: "2.5rem" }}
-                    placeholder="os_v2_app_xxxxxxxxxxxxxxxx"
-                    value={osApiKey}
-                    onChange={(e) => setOsApiKey(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowOsApiKey(!showOsApiKey)}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "1rem",
-                      color: "#64748b",
-                      padding: "2px"
-                    }}
-                    title={showOsApiKey ? "ซ่อนคีย์" : "แสดงคีย์"}
-                  >
-                    {showOsApiKey ? "👁️" : "🙈"}
-                  </button>
-                </div>
+                <input
+                  type="password"
+                  className="input-pill"
+                  placeholder="os_v2_app_xxxxxxxxxxxxxxxx"
+                  value={osApiKey}
+                  onChange={(e) => setOsApiKey(e.target.value)}
+                />
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>
