@@ -1480,7 +1480,8 @@ export default function App() {
             </div>
           )}
 
-          {isAdminLoggedIn && (
+          {/* ซ่อนปุ่ม OneSignal Keys ชั่วคราว (เก็บโค้ดและการทำงานทั้งหมดไว้ใช้งานทีหลัง)
+          isAdminLoggedIn && (
             <button
               className="btn btn-secondary"
               style={{ padding: "6px 14px", fontSize: "0.82rem" }}
@@ -1488,7 +1489,7 @@ export default function App() {
             >
               ⚙️ OneSignal Keys
             </button>
-          )}
+          ) */}
 
           {isAdminLoggedIn && (
             <button
